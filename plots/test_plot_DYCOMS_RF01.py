@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, "./")
-sys.path.insert(0, "./tests")
 sys.path.insert(0, "../scampy")
+sys.path.insert(0, "../SCAMPy")
 
 import os
 import subprocess
