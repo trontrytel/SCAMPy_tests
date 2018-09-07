@@ -10,8 +10,9 @@ from netCDF4 import Dataset
 import numpy as np
 import pprint as pp
 
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
 from matplotlib import ticker
 
 def simulation_setup(case):
@@ -110,7 +111,7 @@ def read_data_avg(sim_data, n_steps=0, var_covar=False):
     time = [0, -1]
     for var in variables:
         data_to_plot[var] = []
-        for it in xrange(2):
+        for it in range(2):
             if ("buoyancy" in var):
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 10000) #cm2/s3
             elif ("qt" in var or "ql" in var or "qr" in var):
@@ -123,7 +124,7 @@ def read_data_avg(sim_data, n_steps=0, var_covar=False):
     # add averaging over last n_steps timesteps
     if(n_steps > 0):
         for var in variables:
-            for time_it in xrange(-2, -1*n_steps-1, -1):
+            for time_it in range(-2, -1*n_steps-1, -1):
                 if ("buoyancy" in var):
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 10000  #cm2/s3
                 elif ("qt" in var or "ql" in var or "qr" in var):
@@ -153,7 +154,7 @@ def read_rad_data_avg(sim_data, n_steps=0):
     rad_data = {"z" : np.array(sim_data["profiles/z"][:])}
     for var in variables:
         rad_data[var] = []
-        for it in xrange(2):
+        for it in range(2):
             if ("rad_dTdt" in var):
                 rad_data[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 60 * 60 * 24) # K/day
             else:
@@ -162,7 +163,7 @@ def read_rad_data_avg(sim_data, n_steps=0):
     # add averaging over last n_steps timesteps
     if(n_steps > 0):
         for var in variables:
-            for time_it in xrange(-2, -1*n_steps-1, -1):
+            for time_it in range(-2, -1*n_steps-1, -1):
                 if ("rad_dTdt" in var):
                     rad_data[var][1] += np.array(sim_data["profiles/" + var][time_it, :] * 60 * 60 * 24) # K/day
                 else:
@@ -272,7 +273,7 @@ def plot_mean(data, title, folder="plots/output/"):
         plots[plot_it].set_ylabel('z [m]')
         plots[plot_it].set_ylim([0, data["z_half"][-1] + (data["z_half"][1] - data["z_half"][0]) * 0.5])
         plots[plot_it].grid(True)
-        for it in xrange(2): #init, end
+        for it in range(2): #init, end
             plots[plot_it].plot(plot_x[plot_it][it], data["z_half"], '.-', color=color[it], label=label[it])
 
     plots[0].legend()
@@ -310,7 +311,7 @@ def plot_drafts(data, title, folder="plots/output/"):
 
     # iteration over plots
     plots = []
-    for plot_it in xrange(6):
+    for plot_it in range(6):
         plots.append(plt.subplot(2,3,plot_it+1))
                                #(rows, columns, number)
         plots[plot_it].set_xlabel(x_lab[plot_it])
