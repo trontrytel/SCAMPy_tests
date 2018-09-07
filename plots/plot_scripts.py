@@ -25,10 +25,10 @@ def simulation_setup(case):
     warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 
     # simulation related parameters
-    os.system("python ../scampy/generate_namelist.py " + case)
+    os.system("python ../SCAMPy/generate_namelist.py " + case)
     file_case = open(case + '.in').read()
     # turbulence related parameters
-    os.system("python ../scampy/generate_paramlist.py " +  case)
+    os.system("python ../SCAMPy/generate_paramlist.py " +  case)
     file_params = open('paramlist_' + case + '.in').read()
 
     namelist  = json.loads(file_case)
