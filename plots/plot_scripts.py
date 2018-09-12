@@ -97,6 +97,7 @@ def read_data_avg(sim_data, n_steps=0, var_tke=False, var_covar=False):
                  "env_qt", "updraft_qt", "env_ql", "updraft_ql",\
                  "env_qr", "updraft_qr", "updraft_w", "env_w"]
     variables_tke = [\
+                 'env_tke',\
                  'tke_mean', 'tke_buoy', 'tke_dissipation', 'tke_entr_gain',\
                  'tke_detr_loss', 'tke_shear', 'tke_pressure', 'massflux_tke']
     variables_var = [\
@@ -199,6 +200,7 @@ def read_data_srs(sim_data, var_tke=False, var_covar=False):
                  "entrainment_sc", "detrainment_sc", "massflux"\
                 ]
     variables_tke = [\
+                 'env_tke',
                  'tke_mean', 'tke_buoy', 'tke_dissipation', 'tke_entr_gain',\
                  'tke_detr_loss', 'tke_shear', 'tke_pressure', 'massflux_tke'\
                 ]
@@ -347,8 +349,7 @@ def plot_drafts(data, title, folder="plots/output/"):
     plt.savefig(folder + title)
     plt.clf()
 
-
-def plot_var_covar_mean(data, title, folder="plots/output/"):
+def plot_var_covar_components(data, title, folder="plots/output/"):
     """
     Plots variance and covariance profiles from Scampy
 
@@ -359,9 +360,9 @@ def plot_var_covar_mean(data, title, folder="plots/output/"):
     """
     # customize defaults
     fig = plt.figure(1)
-    fig.set_figheight(8)
+    fig.set_figheight(12)
     fig.set_figwidth(14)
-    mpl.rcParams.update({'font.size': 16})
+    mpl.rcParams.update({'font.size': 14})
     mpl.rc('lines', linewidth=4, markersize=10)
 
     # data to plot
@@ -369,66 +370,32 @@ def plot_var_covar_mean(data, title, folder="plots/output/"):
     plot_var_mean = ["Hvar_mean",  "QTvar_mean",  "HQTcov_mean"]
     plot_var_env  = ["env_Hvar",   "env_QTvar",   "env_HQTcov"]
 
-    # iteration over plots
-    plots = []
-    for plot_it in range(3):
-        plots.append(plt.subplot(1,3,plot_it+1))
-                               #(rows, columns, number)
-        plots[plot_it].set_xlabel(x_lab[plot_it])
-        plots[plot_it].set_ylabel('z [m]')
-        plots[plot_it].set_ylim([0, data["z_half"][-1] + (data["z_half"][1] - data["z_half"][0]) * 0.5])
-        plots[plot_it].grid(True)
-        plots[plot_it].xaxis.set_major_locator(ticker.MaxNLocator(2))
-
-        plots[plot_it].plot(data[plot_var_mean[plot_it]][1], data["z_half"], ".-", label=plot_var_mean[plot_it], c="black")
-        plots[plot_it].plot(data[plot_var_env[plot_it]][1],  data["z_half"], ".-", label=plot_var_env[plot_it],  c="red")
-
-    plots[0].legend()
-    plt.tight_layout()
-    plt.savefig(folder + title)
-    plt.clf()
-
-
-def plot_var_covar_components(data, title, folder="plots/output/"):
-    """
-    Plots variance and covariance components profiles from Scampy
-
-    Input:
-    data   - dictionary with previousely read it data
-    title  - name for the created plot
-    folder - folder where to save the created plot
-    """
-    # customize defaults
-    fig = plt.figure(1)
-    fig.set_figheight(8)
-    fig.set_figwidth(14)
-    mpl.rcParams.update({'font.size': 16})
-    mpl.rc('lines', linewidth=4, markersize=10)
-
-    # data to plot
     plot_Hvar_c   = ["Hvar_dissipation",   "Hvar_entr_gain",   "Hvar_detr_loss",   "Hvar_shear",   "Hvar_rain"]
     plot_QTvar_c  = ["QTvar_dissipation",  "QTvar_entr_gain",  "QTvar_detr_loss",  "QTvar_shear",  "QTvar_rain"]
     plot_HQTcov_c = ["HQTcov_dissipation", "HQTcov_entr_gain", "HQTcov_detr_loss", "HQTcov_shear", "HQTcov_rain"]
     color_c       = ['green',              'pink',             'purple',           'orange',       'blue']
-
-    x_lab         = ["Hvar",      "QTvar",      "HQTcov"]
     plot_var_data = [plot_Hvar_c, plot_QTvar_c, plot_HQTcov_c]
 
     # iteration over plots
     plots = []
-    for plot_it in range(3):
-        plots.append(plt.subplot(1,3,plot_it+1))
+    for plot_it in range(6):
+        plots.append(plt.subplot(2,3,plot_it+1))
                                #(rows, columns, number)
-        plots[plot_it].set_xlabel(x_lab[plot_it])
+        plots[plot_it].set_xlabel(x_lab[plot_it%3])
         plots[plot_it].set_ylabel('z [m]')
-        plots[plot_it].set_ylim([0, data["z_half"][-1] + (data["z_half"][1] - data["z_half"][0]) * 0.5])
         plots[plot_it].grid(True)
+        plots[plot_it].set_ylim([0, data["z_half"][-1] + (data["z_half"][1] - data["z_half"][0]) * 0.5])
         plots[plot_it].xaxis.set_major_locator(ticker.MaxNLocator(2))
 
+    for plot_it in range(3):
+        plots[plot_it].plot(data[plot_var_mean[plot_it]][1], data["z_half"], ".-", label=plot_var_mean[plot_it], c="black")
+        plots[plot_it].plot(data[plot_var_env[plot_it]][1],  data["z_half"], ".-", label=plot_var_env[plot_it],  c="red")
+        plots[plot_it].legend()
+    for plot_it in range(3,6,1):
         for var in range(5):
-            plots[plot_it].plot(data[plot_var_data[plot_it][var]][1],   data["z_half"], ".-", label=plot_Hvar_c[var],  c=color_c[var])
+            plots[plot_it].plot(data[plot_var_data[plot_it%3][var]][1],   data["z_half"], ".-", label=plot_Hvar_c[var],  c=color_c[var])
+        plots[plot_it].legend()
 
-    plots[0].legend()
     plt.tight_layout()
     plt.savefig(folder + title)
     plt.clf()
@@ -450,10 +417,10 @@ def plot_tke_components(data, title, folder="plots/output/"):
     mpl.rc('lines', linewidth=2, markersize=6)
 
     # data to plot
-    plot_y = [data["tke_mean"], data["tke_dissipation"], data["tke_buoy"], data["tke_entr_gain"], data["tke_detr_loss"],\
-              data["tke_shear"], data["tke_pressure"], data["massflux_tke"]]
-    y_lab  = ['tke mean', 'tke diss', 'tke buoy', 'tke entr gain', 'tke detr loss', 'tke shear', 'tke pres', 'tke massflux']
-    c_lab  = ['black', 'red', 'green', 'blue', 'cyan', 'orange', 'magenta', 'grey']
+    plot_y = [data["env_tke"], data["tke_dissipation"], data["tke_buoy"], data["tke_entr_gain"], data["tke_detr_loss"],\
+              data["tke_shear"], data["tke_pressure"]]
+    y_lab  = ['tke env', 'tke diss', 'tke buoy', 'tke entr gain', 'tke detr loss', 'tke shear', 'tke pres']
+    c_lab  = ['black', 'red', 'green', 'blue', 'cyan', 'orange', 'magenta']
 
     # iteration over plots
     plots = []
@@ -467,7 +434,7 @@ def plot_tke_components(data, title, folder="plots/output/"):
     plots[0].legend()
     plots[0].set_xlabel('TKE mean [m2/s2], TKE diss')
 
-    for plot_it in range(2,8,1):
+    for plot_it in range(2,7,1):
         plots[1].plot(plot_y[plot_it][1], data["z_half"], '.-', color=c_lab[plot_it], label=y_lab[plot_it])
     plots[1].set_xlabel('TKE components')
     plots[1].legend()

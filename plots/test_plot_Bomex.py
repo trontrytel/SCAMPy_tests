@@ -31,7 +31,7 @@ def sim_data(request):
     sim_data = Dataset(setup["outfile"], 'r')
 
     # remove netcdf file after tests
-    request.addfinalizer(pls.removing_files)
+    #request.addfinalizer(pls.removing_files)
 
     return sim_data
 
@@ -74,5 +74,4 @@ def test_plot_var_covar_Bomex(sim_data):
     """
     data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_covar=True)
 
-    pls.plot_var_covar_mean(data_to_plot,       "Bomex_var_covar_mean.pdf")
     pls.plot_var_covar_components(data_to_plot, "Bomex_var_covar_components.pdf")
