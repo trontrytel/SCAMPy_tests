@@ -39,25 +39,16 @@ def test_plot_Rico(sim_data):
     """
     plot Rico profiles
     """
-    data_to_plot = pls.read_data_avg(sim_data, n_steps=100)
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
 
     pls.plot_mean(data_to_plot,   "Rico_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "Rico_quicklook_drafts.pdf")
-
-def test_plot_var_covar_Rico(sim_data):
-    """
-    plot Rico variance and covariance of H and QT profiles
-    """
-    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_covar=True)
-
-    pls.plot_var_covar_mean(data_to_plot,       "Rico_var_covar_mean.pdf")
-    pls.plot_var_covar_components(data_to_plot, "Rico_var_covar_components.pdf")
 
 def test_plot_timeseries_Rico(sim_data):
     """
     plot timeseries
     """
-    data_to_plot = pls.read_data_srs(sim_data)
+    data_to_plot = pls.read_data_srs(sim_data, var_tke=True)
 
     pls.plot_timeseries(data_to_plot, "Rico")
 
@@ -69,3 +60,19 @@ def test_plot_timeseries_1D_Rico(sim_data):
 
     pls.plot_timeseries_1D(data_to_plot, "Rico_timeseries_1D.pdf")
 
+def test_plot_tke_components_Rico(sim_data):
+    """
+    plot Rico tke components
+    """
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
+
+    pls.plot_tke_components(data_to_plot, "Rico_tke_components.pdf")
+
+def test_plot_var_covar_Rico(sim_data):
+    """
+    plot Rico variance and covariance of H and QT profiles
+    """
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_covar=True)
+
+    pls.plot_var_covar_mean(data_to_plot,       "Rico_var_covar_mean.pdf")
+    pls.plot_var_covar_components(data_to_plot, "Rico_var_covar_components.pdf")

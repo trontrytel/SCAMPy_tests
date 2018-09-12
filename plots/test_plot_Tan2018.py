@@ -39,7 +39,7 @@ def test_plot_Tan2018(sim_data):
     """
     plot Tan2018 profiles
     """
-    data_to_plot = pls.read_data_avg(sim_data, n_steps=100)
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
 
     pls.plot_mean(data_to_plot,   "Tan2018_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "Tan2018_quicklook_drafts.pdf")
@@ -48,7 +48,7 @@ def test_plot_timeseries_Tan2018(sim_data):
     """
     plot Tan2018 timeseries
     """
-    data_to_plot = pls.read_data_srs(sim_data)
+    data_to_plot = pls.read_data_srs(sim_data, var_tke=True)
 
     pls.plot_timeseries(data_to_plot, "Tan2018")
 
@@ -59,6 +59,14 @@ def test_plot_timeseries_1D_Tan2018(sim_data):
     data_to_plot = pls.read_data_timeseries(sim_data)
 
     pls.plot_timeseries_1D(data_to_plot, "Tan2018_timeseries_1D.pdf")
+
+def test_plot_tke_components_Tan2018(sim_data):
+    """
+    plot Tan2018 tke components
+    """
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
+
+    pls.plot_tke_components(data_to_plot, "Tan2018_tke_components.pdf")
 
 def test_plot_var_covar_Tan2018(sim_data):
     """

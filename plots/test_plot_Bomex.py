@@ -39,7 +39,7 @@ def test_plot_Bomex(sim_data):
     """
     plot Bomex profiles
     """
-    data_to_plot = pls.read_data_avg(sim_data, n_steps=100)
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
 
     pls.plot_mean(data_to_plot,   "Bomex_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "Bomex_quicklook_drafts.pdf")
@@ -48,7 +48,7 @@ def test_plot_timeseries_Bomex(sim_data):
     """
     plot Bomex timeseries
     """
-    data_to_plot = pls.read_data_srs(sim_data)
+    data_to_plot = pls.read_data_srs(sim_data, var_tke=True)
 
     pls.plot_timeseries(data_to_plot, "Bomex")
 
@@ -59,6 +59,14 @@ def test_plot_timeseries_1D_Bomex(sim_data):
     data_to_plot = pls.read_data_timeseries(sim_data)
 
     pls.plot_timeseries_1D(data_to_plot, "Bomex_timeseries_1D.pdf")
+
+def test_plot_tke_components_Bomex(sim_data):
+    """
+    plot Bomex tke components
+    """
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
+
+    pls.plot_tke_components(data_to_plot, "Bomex_tke_components.pdf")
 
 def test_plot_var_covar_Bomex(sim_data):
     """

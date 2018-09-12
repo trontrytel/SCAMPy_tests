@@ -39,7 +39,7 @@ def test_plot_Soares(sim_data):
     """
     plot Soares profiles
     """
-    data_to_plot = pls.read_data_avg(sim_data, n_steps=100)
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
 
     pls.plot_mean(data_to_plot,   "Soares_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "Soares_quicklook_drafts.pdf")
@@ -48,7 +48,7 @@ def test_plot_timeseries_Soares(sim_data):
     """
     plot Soares timeseries
     """
-    data_to_plot = pls.read_data_srs(sim_data)
+    data_to_plot = pls.read_data_srs(sim_data, var_tke=True)
 
     pls.plot_timeseries(data_to_plot, "Soares")
 
@@ -59,6 +59,14 @@ def test_plot_timeseries_1D_Soares(sim_data):
     data_to_plot = pls.read_data_timeseries(sim_data)
 
     pls.plot_timeseries_1D(data_to_plot, "Soares_timeseries_1D.pdf")
+
+def test_plot_tke_components_Soares(sim_data):
+    """
+    plot Soares tke components
+    """
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
+
+    pls.plot_tke_components(data_to_plot, "Soares_tke_components.pdf")
 
 def test_plot_var_covar_Soares(sim_data):
     """

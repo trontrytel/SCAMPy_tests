@@ -40,7 +40,7 @@ def test_plot_GATE_III(sim_data):
     """
     plot GATE_III profiles
     """
-    data_to_plot = pls.read_data_avg(sim_data, n_steps=100)
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
 
     pls.plot_mean(data_to_plot,   "GATE_III_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "GATE_III_quicklook_drafts.pdf")
@@ -48,9 +48,9 @@ def test_plot_GATE_III(sim_data):
 @pytest.mark.skip(reason="deep convection not working with current defaults")
 def test_plot_timeseries_GATE_III(sim_data):
     """
-    plot timeseries
+    plot GATE_III timeseries
     """
-    data_to_plot = pls.read_data_srs(sim_data)
+    data_to_plot = pls.read_data_srs(sim_data, var_tke=True)
 
     pls.plot_timeseries(data_to_plot, "GATE_III")
 
@@ -62,6 +62,15 @@ def test_plot_timeseries_1D_GATE_III(sim_data):
     data_to_plot = pls.read_data_timeseries(sim_data)
 
     pls.plot_timeseries_1D(data_to_plot, "GATE_III_timeseries_1D.pdf")
+
+@pytest.mark.skip(reason="deep convection not working with current defaults")
+def test_plot_tke_components_GATE_III(sim_data):
+    """
+    plot GATE_III tke components
+    """
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
+
+    pls.plot_tke_components(data_to_plot, "GATE_III_tke_components.pdf")
 
 @pytest.mark.skip(reason="deep convection not working with current defaults")
 def test_plot_var_covar_GATE_III(sim_data):

@@ -40,7 +40,7 @@ def test_plot_TRMM_LBA(sim_data):
     """
     plot TRMM_LBA profiles
     """
-    data_to_plot = pls.read_data_avg(sim_data, n_steps=100)
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
 
     pls.plot_mean(data_to_plot,   "TRMM_LBA_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "TRMM_LBA_quicklook_drafts.pdf")
@@ -48,9 +48,9 @@ def test_plot_TRMM_LBA(sim_data):
 @pytest.mark.skip(reason="deep convection not working with current defaults")
 def test_plot_timeseries_TRMM_LBA(sim_data):
     """
-    plot timeseries
+    plot TRMM_LBA timeseries
     """
-    data_to_plot = pls.read_data_srs(sim_data)
+    data_to_plot = pls.read_data_srs(sim_data, var_tke=True)
 
     pls.plot_timeseries(data_to_plot, "TRMM_LBA")
 
@@ -62,6 +62,15 @@ def test_plot_timeseries_1D_TRMM_LBA(sim_data):
     data_to_plot = pls.read_data_timeseries(sim_data)
 
     pls.plot_timeseries_1D(data_to_plot, "TRMM_LBA_timeseries_1D.pdf")
+
+@pytest.mark.skip(reason="deep convection not working with current defaults")
+def test_plot_tke_components_TRMM_LBA(sim_data):
+    """
+    plot TRMM_LBA tke components
+    """
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
+
+    pls.plot_tke_components(data_to_plot, "TRMM_LBA_tke_components.pdf")
 
 @pytest.mark.skip(reason="deep convection not working with current defaults")
 def test_plot_var_covar_TRMM_LBA(sim_data):

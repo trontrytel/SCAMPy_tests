@@ -81,27 +81,33 @@ def discrete_cmap(N, base_cmap=None):
     return base.from_list(cmap_name, color_list, N)
 
 
-def read_data_avg(sim_data, n_steps=0, var_covar=False):
+def read_data_avg(sim_data, n_steps=0, var_tke=False, var_covar=False):
     """
     Read in the data from netcdf file into a dictionary that can be used for plots
 
     Input:
     sim_data  - netcdf Dataset with simulation results
     n_steps   - number of timesteps to average over
+    var_tke   - flag for when we also want to read in the tke components
     var_covar - flag for when we also want to read in the variance and covariance fields
     """
-    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean",\
-                 "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
-                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql",\
+    variables = ["temperature_mean", "thetal_mean", "buoyancy_mean",\
+                 "qt_mean", "ql_mean", "qr_mean", "u_mean", "v_mean",\
+                 "updraft_buoyancy", "updraft_area",\
+                 "env_qt", "updraft_qt", "env_ql", "updraft_ql",\
                  "env_qr", "updraft_qr", "updraft_w", "env_w"]
+    variables_tke = [\
+                 'tke_mean', 'tke_buoy', 'tke_dissipation', 'tke_entr_gain',\
+                 'tke_detr_loss', 'tke_shear', 'tke_pressure', 'massflux_tke']
     variables_var = [\
                  "Hvar_mean", "QTvar_mean", "HQTcov_mean", "env_Hvar", "env_QTvar", "env_HQTcov",\
                  "Hvar_dissipation", "QTvar_dissipation", "HQTcov_dissipation",\
                  "Hvar_entr_gain", "QTvar_entr_gain", "HQTcov_entr_gain",\
                  "Hvar_detr_loss", "QTvar_detr_loss", "HQTcov_detr_loss",\
                  "Hvar_shear", "QTvar_shear", "HQTcov_shear",\
-                 "Hvar_rain", "QTvar_rain", "HQTcov_rain"
-                ]
+                 "Hvar_rain", "QTvar_rain", "HQTcov_rain"]
+    if var_tke:
+        variables.extend(variables_tke)
     if var_covar:
         variables.extend(variables_var)
 
@@ -174,7 +180,7 @@ def read_rad_data_avg(sim_data, n_steps=0):
     return rad_data
 
 
-def read_data_srs(sim_data, var_covar=False):
+def read_data_srs(sim_data, var_tke=False, var_covar=False):
     """
     Read in the data from netcdf file into a dictionary that can be used for timeseries of profiles plots
 
@@ -183,13 +189,18 @@ def read_data_srs(sim_data, var_covar=False):
     var_covar - flag for when we also want to read in the variance and covariance fields
     """
     variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean",\
-                 "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
-                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_thetal",\
+                 "buoyancy_mean", "u_mean", "v_mean",\
+                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt",\
+                 "env_ql", "updraft_ql", "updraft_thetal",\
                  "env_qr", "updraft_qr", "updraft_w", "env_w", "env_thetal",\
                  "massflux_h", "diffusive_flux_h", "total_flux_h",\
                  "massflux_qt","diffusive_flux_qt","total_flux_qt",\
                  "eddy_viscosity", "eddy_diffusivity", "mixing_length",\
                  "entrainment_sc", "detrainment_sc", "massflux"\
+                ]
+    variables_tke = [\
+                 'tke_mean', 'tke_buoy', 'tke_dissipation', 'tke_entr_gain',\
+                 'tke_detr_loss', 'tke_shear', 'tke_pressure', 'massflux_tke'\
                 ]
     variables_var = [\
                  "Hvar_mean", "QTvar_mean", "HQTcov_mean", "env_Hvar", "env_QTvar", "env_HQTcov",\
@@ -199,6 +210,8 @@ def read_data_srs(sim_data, var_covar=False):
                  "Hvar_shear", "QTvar_shear", "HQTcov_shear",\
                  "Hvar_rain", "QTvar_rain", "HQTcov_rain"\
                 ]
+    if var_tke:
+        variables.extend(variables_tke)
     if var_covar:
         variables.extend(variables_var)
 
@@ -420,6 +433,48 @@ def plot_var_covar_components(data, title, folder="plots/output/"):
     plt.savefig(folder + title)
     plt.clf()
 
+def plot_tke_components(data, title, folder="plots/output/"):
+    """
+    Plots TKE mean and its components from Scampy
+
+    Input:
+    data   - dictionary with previousely read it data
+    title  - name for the created plot
+    folder - folder where to save the created plot
+    """
+    # customize defaults
+    fig = plt.figure(1)
+    fig.set_figheight(8)
+    fig.set_figwidth(14)
+    mpl.rcParams.update({'font.size': 12})
+    mpl.rc('lines', linewidth=2, markersize=6)
+
+    # data to plot
+    plot_y = [data["tke_mean"], data["tke_dissipation"], data["tke_buoy"], data["tke_entr_gain"], data["tke_detr_loss"],\
+              data["tke_shear"], data["tke_pressure"], data["massflux_tke"]]
+    y_lab  = ['tke mean', 'tke diss', 'tke buoy', 'tke entr gain', 'tke detr loss', 'tke shear', 'tke pres', 'tke massflux']
+    c_lab  = ['black', 'red', 'green', 'blue', 'cyan', 'orange', 'magenta', 'grey']
+
+    # iteration over plots
+    plots = []
+    for plot_it in range(2):
+        plots.append(plt.subplot(1,2,plot_it+1))
+        plots[plot_it].set_ylabel('z [m]')
+        plots[plot_it].grid(True)
+
+    plots[0].plot(plot_y[0][1], data["z_half"], '.-', color=c_lab[0], label=y_lab[0])
+    plots[0].plot(plot_y[1][1], data["z_half"], '.-', color=c_lab[1], label=y_lab[1])
+    plots[0].legend()
+    plots[0].set_xlabel('TKE mean [m2/s2], TKE diss')
+
+    for plot_it in range(2,8,1):
+        plots[1].plot(plot_y[plot_it][1], data["z_half"], '.-', color=c_lab[plot_it], label=y_lab[plot_it])
+    plots[1].set_xlabel('TKE components')
+    plots[1].legend()
+    plots[1].xaxis.set_major_locator(ticker.MaxNLocator(5))
+
+    plt.savefig(folder + title)
+    plt.clf()
 
 def plot_timeseries_1D(data, title, folder="plots/output/"):
     """

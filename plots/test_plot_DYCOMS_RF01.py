@@ -40,25 +40,16 @@ def test_plot_DYCOMS_RF01(sim_data):
     """
     plot DYCOMS_RF01 quicklook profiles
     """
-    data_to_plot = pls.read_data_avg(sim_data, n_steps=100)
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
 
     pls.plot_mean(data_to_plot,   "DYCOMS_RF01_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "DYCOMS_RF01_quicklook_drafts.pdf")
-
-def test_plot_var_covar_DYCOMS_RF01(sim_data):
-    """
-    plot DYCOMS_RF01 quicklook profiles
-    """
-    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_covar=True)
-
-    pls.plot_var_covar_mean(data_to_plot,       "DYCOMS_RF01_var_covar_mean.pdf")
-    pls.plot_var_covar_components(data_to_plot, "DYCOMS_RF01_var_covar_components.pdf")
 
 def test_plot_timeseries_DYCOMS(sim_data):
     """
     plot timeseries
     """
-    data_to_plot = pls.read_data_srs(sim_data)
+    data_to_plot = pls.read_data_srs(sim_data, var_tke=True)
 
     pls.plot_timeseries(data_to_plot, "DYCOMS")
 
@@ -69,6 +60,23 @@ def test_plot_timeseries_1D_DYCOMS_RF01(sim_data):
     data_to_plot = pls.read_data_timeseries(sim_data)
 
     pls.plot_timeseries_1D(data_to_plot, "DYCOMS_RF01_timeseries_1D.pdf")
+
+def test_plot_tke_components_DYCOMS_RF01(sim_data):
+    """
+    plot DYCOMS_RF01 tke components
+    """
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_tke=True)
+
+    pls.plot_tke_components(data_to_plot, "DYCOMS_RF01_tke_components.pdf")
+
+def test_plot_var_covar_DYCOMS_RF01(sim_data):
+    """
+    plot DYCOMS_RF01 quicklook profiles
+    """
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_covar=True)
+
+    pls.plot_var_covar_mean(data_to_plot,       "DYCOMS_RF01_var_covar_mean.pdf")
+    pls.plot_var_covar_components(data_to_plot, "DYCOMS_RF01_var_covar_components.pdf")
 
 def test_DYCOMS_RF01_radiation(sim_data):
     """
