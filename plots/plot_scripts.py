@@ -185,7 +185,7 @@ def read_data_srs(sim_data, var_covar=False):
     variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean",\
                  "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
                  "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_thetal",\
-                 "env_qr", "updraft_qr", "updraft_w", "env_w", "env_thetal",\
+                 "env_qr", "updraft_qr", "updraft_rain_area", "env_rain_area", "updraft_w", "env_w", "env_thetal",\
                  "massflux_h", "diffusive_flux_h", "total_flux_h",\
                  "massflux_qt","diffusive_flux_qt","total_flux_qt",\
                  "eddy_viscosity", "eddy_diffusivity", "mixing_length",\
@@ -509,13 +509,17 @@ def plot_timeseries(data, case, folder="plots/output/"):
     misc_label = ["eddy visc",            "eddy diff",              "mix. length",         "entr sc",              "detr sc",                 "mass flux"]
     misc_cb    = [mpl.cm.Blues,           mpl.cm.Blues,             mpl.cm.Blues,          mpl.cm.Blues,           mpl.cm.Blues,              mpl.cm.Blues]
 
-    data_to_plot = [mean_data,  env_data,  updr_data,  flux_data,  misc_data]
-    labels       = [mean_label, env_label, updr_label, flux_label, misc_label]
-    titles       = ["01mean",   "02env",   "03updr",   "04flx",    "05misc"]
-    cbs          = [mean_cb,    env_cb,    updr_cb,    flux_cb,    misc_cb]
+    rain_data  = [data["updraft_area"],   data["updraft_rain_area"],data["updraft_qr"],    env_area,               data["env_rain_area"],     data["env_qr"]]
+    rain_label = ["updr area",            "updr rain area",         "updr qr",             "env area",             "env rain area",           "env rain"]
+    rain_cb    = [mpl.cm.Spectral,        mpl.cm.Spectral,          mpl.cm.Spectral,       mpl.cm.Spectral,        mpl.cm.Spectral,           mpl.cm.Spectral]
+
+    data_to_plot = [mean_data,  env_data,  updr_data,  flux_data,  misc_data,  rain_data]
+    labels       = [mean_label, env_label, updr_label, flux_label, misc_label, rain_label ]
+    titles       = ["01mean",   "02env",   "03updr",   "04flx",    "05misc",   "06rain"]
+    cbs          = [mean_cb,    env_cb,    updr_cb,    flux_cb,    misc_cb,    rain_cb]
 
     # iteration over plots
-    for var in range(5):
+    for var in range(6):
         ax   = []
         plot = []
         for plot_it in range(6):

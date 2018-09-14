@@ -23,6 +23,9 @@ def sim_data(request):
     setup = pls.simulation_setup('Rico')
     # change the defaults
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = True
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
+    setup['namelist']['microphysics']['rain_model'] = True
+    setup['namelist']['microphysics']['max_supersaturation'] = 1e-4
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
