@@ -99,7 +99,7 @@ def read_data_avg(sim_data, n_steps=0, var_tke=False, var_covar=False):
     variables_tke = [\
                  'env_tke',\
                  'tke_mean', 'tke_buoy', 'tke_dissipation', 'tke_entr_gain',\
-                 'tke_detr_loss', 'tke_shear', 'tke_pressure', 'massflux_tke']
+                 'tke_detr_loss', 'tke_shear', 'tke_pressure']
     variables_var = [\
                  "Hvar_mean", "QTvar_mean", "HQTcov_mean", "env_Hvar", "env_QTvar", "env_HQTcov",\
                  "Hvar_dissipation", "QTvar_dissipation", "HQTcov_dissipation",\
@@ -202,7 +202,7 @@ def read_data_srs(sim_data, var_tke=False, var_covar=False):
     variables_tke = [\
                  'env_tke',
                  'tke_mean', 'tke_buoy', 'tke_dissipation', 'tke_entr_gain',\
-                 'tke_detr_loss', 'tke_shear', 'tke_pressure', 'massflux_tke'\
+                 'tke_detr_loss', 'tke_shear', 'tke_pressure'\
                 ]
     variables_var = [\
                  "Hvar_mean", "QTvar_mean", "HQTcov_mean", "env_Hvar", "env_QTvar", "env_HQTcov",\
