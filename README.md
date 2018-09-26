@@ -13,7 +13,14 @@ and that the SCAMPy code has been compiled.
 To generate the automatic plots try:
 
 ```
-$ py.test -v plots/
+$ py.test -s -v plots/
+
+```
+
+To run one case (for example Bomex) try:
+
+```
+$ py.test -s -v plots/test_plot_Bomex.py
 
 ```
 
