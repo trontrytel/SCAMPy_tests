@@ -492,31 +492,45 @@ def plot_timeseries(data, case, folder="plots/output/"):
     mean_data  = [data["thetal_mean"],    data["buoyancy_mean"],    data["tke_mean"],      mean_qv,                data["ql_mean"],           data["qr_mean"]]
     mean_label = ["mean thl [K]",         "mean buo [cm2/s3]",      "mean TKE [m2/s2]",    "mean qv [g/kg]",       "mean ql [g/kg]",          "mean qr [g/kg]"]
     mean_cb    = [mpl.cm.Reds,            mpl.cm.Reds,              mpl.cm.Reds,           mpl.cm.Blues,           mpl.cm.Blues,              mpl.cm.Blues]
+    mean_min   = [299,                    -10,                       0,                    2,                      0,                          0]
+    mean_max   = [316,                    10,                        0.5,                  16,                     16e-5,                     1]
 
     env_data   = [data["env_thetal"],     env_area,                 data["env_w"],         env_qv,                 data["env_ql"],            data["env_qr"]]
     env_label  = ["env thl [K]",          "env area [%]",           "env w [m/s]",         "env qv [g/kg]",        "env ql [g/kg]",           "env qr [g/kg]"]
     env_cb     = [mpl.cm.Reds,            mpl.cm.Reds,              mpl.cm.Reds_r,         mpl.cm.Blues,           mpl.cm.Blues,              mpl.cm.Blues]
+    env_min    = [299,                    .9,                       -0.05,                 2,                      0,                         0]
+    env_max    = [316,                    1,                        0,                     16,                     12e-16,                    1]
 
     updr_data  = [data["updraft_thetal"], data["updraft_area"],     data["updraft_w"],     updr_qv,                data["updraft_ql"],        data["updraft_qr"]]
     updr_label = ["updr thl [K]",   "     updr area [%]",           "updr w [m/s]",        "updr qv [g/kg]",       "updr ql [g/kg]",          "updr qr [g/kg"]
     updr_cb    = [mpl.cm.Reds,            mpl.cm.Reds,              mpl.cm.Reds,           mpl.cm.Blues,           mpl.cm.Blues,              mpl.cm.Blues]
+    updr_min   = [299,                    0,                        0,                     2,                      0,                         0]
+    updr_max   = [316,                    0.1,                      0.025,                 16,                     14e-4,                     1]
 
     flux_data  = [data["massflux_h"],     data["diffusive_flux_h"], data["total_flux_h"],  data["massflux_qt"],    data["diffusive_flux_qt"], data["total_flux_qt"]]
     flux_label = ["M_FL thl",             "D_FL thl ",              "tot FL thl",          "M_FL qt",              "D_FL qt",                 "tot FL qt"]
     flux_cb    = [mpl.cm.Spectral,        mpl.cm.Spectral,          mpl.cm.Spectral,       mpl.cm.Spectral_r,      mpl.cm.Spectral_r,         mpl.cm.Spectral_r]
+    flux_min   = [-12e-3,                 -40e-3,                   -0.04,                 0,                      0,                         0]
+    flux_max   = [16e-3,                  5e-3,                     0.01,                  0.08,                   0.07,                      0.1]
 
     misc_data  = [data["eddy_viscosity"], data["eddy_diffusivity"], data["mixing_length"], data["entrainment_sc"], data["detrainment_sc"],    data["massflux"]]
     misc_label = ["eddy visc",            "eddy diff",              "mix. length",         "entr sc",              "detr sc",                 "mass flux"]
     misc_cb    = [mpl.cm.Blues,           mpl.cm.Blues,             mpl.cm.Blues,          mpl.cm.Blues,           mpl.cm.Blues,              mpl.cm.Blues]
+    misc_min   = [0,                      0,                        0,                     0.,                     0,                         0]
+    misc_max   = [20,                     20,                       350,                   0.06,                   0.14,                      0.05]
 
     rain_data  = [data["updraft_area"],   data["updraft_rain_area"],data["updraft_qr"],    env_area,               data["env_rain_area"],     data["env_qr"]]
     rain_label = ["updr area",            "updr rain area",         "updr qr",             "env area",             "env rain area",           "env rain"]
     rain_cb    = [mpl.cm.Spectral,        mpl.cm.Spectral,          mpl.cm.Spectral,       mpl.cm.Spectral,        mpl.cm.Spectral,           mpl.cm.Spectral]
+    rain_min   = [0,                      0,                        0,                     .9,                     0,                         0]
+    rain_max   = [0.1,                    0.3,                      1,                     1,                      0.2,                       1]
 
     data_to_plot = [mean_data,  env_data,  updr_data,  flux_data,  misc_data,  rain_data]
     labels       = [mean_label, env_label, updr_label, flux_label, misc_label, rain_label ]
     titles       = ["01mean",   "02env",   "03updr",   "04flx",    "05misc",   "06rain"]
     cbs          = [mean_cb,    env_cb,    updr_cb,    flux_cb,    misc_cb,    rain_cb]
+    vmin         = [mean_min,   env_min,   updr_min,   flux_min,   misc_min,   rain_min]
+    vmax         = [mean_max,   env_max,   updr_max,   flux_max,   misc_max,   rain_max]
 
     # iteration over plots
     for var in range(6):
@@ -527,7 +541,8 @@ def plot_timeseries(data, case, folder="plots/output/"):
                                     #(rows, columns, number)
             ax[plot_it].set_xlabel('t [hrs]')
             ax[plot_it].set_ylabel('z [m]')
-            plot.append(ax[plot_it].pcolormesh(time, z_half, data_to_plot[var][plot_it], cmap=discrete_cmap(32, cbs[var][plot_it]), rasterized=True))
+            plot.append(ax[plot_it].pcolormesh(time[:], z_half, data_to_plot[var][plot_it][:,:], cmap=discrete_cmap(32, cbs[var][plot_it]), vmin=vmin[var][plot_it], vmax=vmax[var][plot_it], rasterized=True))
+            #plot.append(ax[plot_it].pcolormesh(time[-9:], z_half, data_to_plot[var][plot_it][:,-9:], cmap=discrete_cmap(32, cbs[var][plot_it]), vmin=vmin[var][plot_it], vmax=vmax[var][plot_it], rasterized=True))
             fig.colorbar(plot[plot_it], ax=ax[plot_it], label=labels[var][plot_it])
 
         #plt.tight_layout()

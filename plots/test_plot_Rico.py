@@ -24,8 +24,18 @@ def sim_data(request):
     # change the defaults
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = True
     setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
-    setup['namelist']['microphysics']['rain_model'] = True
-    setup['namelist']['microphysics']['max_supersaturation'] = 1e-4
+    #setup['namelist']['microphysics']['rain_model'] = False
+    #setup['namelist']['microphysics']['max_supersaturation'] = 1e-4
+    setup["paramlist"]['turbulence']['updraft_microphysics']['max_supersaturation'] = 1e-4
+
+
+    setup['namelist']['time_stepping']['dt'] = 1.
+    #setup['namelist']['time_stepping']['t_max'] = 8450. #86400.
+
+    #setup['namelist']['stats_io']['frequency'] = 30.0
+
+    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['surface_area'] = 0.1
+    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['max_area_factor'] = 9.9
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
