@@ -541,7 +541,7 @@ def plot_timeseries(data, case, folder="plots/output/"):
                                     #(rows, columns, number)
             ax[plot_it].set_xlabel('t [hrs]')
             ax[plot_it].set_ylabel('z [m]')
-            plot.append(ax[plot_it].pcolormesh(time[:], z_half, data_to_plot[var][plot_it][:,:], cmap=discrete_cmap(32, cbs[var][plot_it]), vmin=vmin[var][plot_it], vmax=vmax[var][plot_it], rasterized=True))
+            plot.append(ax[plot_it].pcolormesh(time[:], z_half, data_to_plot[var][plot_it][:,:], cmap=discrete_cmap(32, cbs[var][plot_it]), rasterized=True))
             #plot.append(ax[plot_it].pcolormesh(time[-9:], z_half, data_to_plot[var][plot_it][:,-9:], cmap=discrete_cmap(32, cbs[var][plot_it]), vmin=vmin[var][plot_it], vmax=vmax[var][plot_it], rasterized=True))
             fig.colorbar(plot[plot_it], ax=ax[plot_it], label=labels[var][plot_it])
 

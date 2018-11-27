@@ -23,7 +23,14 @@ def sim_data(request):
     setup = pls.simulation_setup('DYCOMS_RF01')
     # chenge the defaults
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = True
-    #setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = "suselj"
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 5
+
+    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['surface_area'] = 0.2
+    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['tke_diss_coeff'] = 0.022
+    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['tke_ed_coeff'] = 0.5
+    setup["paramlist"]['turbulence']['prandtl_number'] = 0.8
+    setup["paramlist"]['turbulence']['Ri_bulk_crit'] = 0.2
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
