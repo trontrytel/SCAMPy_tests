@@ -28,14 +28,16 @@ def sim_data(request):
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['mixing_length'] = "sbl"
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']["use_sommeria_deardorff"] = False
 
+    #setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = True
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
+
     setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
     #setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
 
     setup['namelist']['microphysics']['rain_model'] = True
     setup['namelist']['microphysics']['rain_const_area'] = True
-    setup['namelist']['microphysics']['upd_rain_area_value'] = 1.
-    setup['namelist']['microphysics']['env_rain_area_value'] = 1.
-    setup['namelist']['microphysics']['max_supersaturation'] = 1e-3 #0.1  # 1e-4
+    #setup['namelist']['microphysics']['rain_area_value'] = 1.
+    setup['namelist']['microphysics']['max_supersaturation'] = 1e-4 #0.1  # 1e-4
 
     #setup['namelist']['time_stepping']['dt'] = 1.
     #setup['namelist']['time_stepping']['t_max'] = 43200.  #8450. #86400.
@@ -64,7 +66,7 @@ def sim_data(request):
     sim_data = Dataset(setup["outfile"], 'r')
 
     # remove netcdf file after tests
-    #request.addfinalizer(pls.removing_files)
+    request.addfinalizer(pls.removing_files)
 
     return sim_data
 

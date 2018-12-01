@@ -22,13 +22,14 @@ def sim_data(request):
     # generate namelists and paramlists
     setup = pls.simulation_setup('Bomex')
     # change the defaults
-    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = True
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = "b_w2"
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 5
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['mixing_length'] = "sbl"
+    #setup['namelist']['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = True
+    #setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = "b_w2"
+    #setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 5
+    #setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['mixing_length'] = "sbl"
     #setup["namelist"]['turbulence']['EDMF_PrognosticTKE']["use_sommeria_deardorff"] = False
 
-    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = True
+    #setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
     #setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
 
     #setup["paramlist"]['turbulence']['prandtl_number'] = 0.8
@@ -54,7 +55,7 @@ def sim_data(request):
     sim_data = Dataset(setup["outfile"], 'r')
 
     # remove netcdf file after tests
-    #request.addfinalizer(pls.removing_files)
+    request.addfinalizer(pls.removing_files)
 
     return sim_data
 
