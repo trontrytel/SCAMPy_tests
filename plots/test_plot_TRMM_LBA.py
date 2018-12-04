@@ -24,6 +24,18 @@ def sim_data(request):
     # chenge the defaults
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = True
 
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
+
+    setup['namelist']['microphysics']['rain_model'] = True
+    setup['namelist']['microphysics']['rain_const_area'] = True
+    #setup['namelist']['microphysics']['rain_area_value'] = 1.
+    setup['namelist']['microphysics']['max_supersaturation'] = 0.01  # 1e-4
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 5
+
+    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['entrainment_factor'] = 0.5
+    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['detrainment_factor'] = 0.5
+
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
 
@@ -35,7 +47,7 @@ def sim_data(request):
 
     return sim_data
 
-@pytest.mark.skip(reason="deep convection not working with current defaults")
+#@pytest.mark.skip(reason="deep convection not working with current defaults")
 def test_plot_TRMM_LBA(sim_data):
     """
     plot TRMM_LBA profiles
@@ -45,7 +57,7 @@ def test_plot_TRMM_LBA(sim_data):
     pls.plot_mean(data_to_plot,   "TRMM_LBA_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "TRMM_LBA_quicklook_drafts.pdf")
 
-@pytest.mark.skip(reason="deep convection not working with current defaults")
+#@pytest.mark.skip(reason="deep convection not working with current defaults")
 def test_plot_timeseries_TRMM_LBA(sim_data):
     """
     plot timeseries
@@ -54,7 +66,7 @@ def test_plot_timeseries_TRMM_LBA(sim_data):
 
     pls.plot_timeseries(data_to_plot, "TRMM_LBA")
 
-@pytest.mark.skip(reason="deep convection not working with current defaults")
+#@pytest.mark.skip(reason="deep convection not working with current defaults")
 def test_plot_timeseries_1D_TRMM_LBA(sim_data):
     """
     plot TRMM_LBA 1D timeseries
@@ -63,7 +75,7 @@ def test_plot_timeseries_1D_TRMM_LBA(sim_data):
 
     pls.plot_timeseries_1D(data_to_plot, "TRMM_LBA_timeseries_1D.pdf")
 
-@pytest.mark.skip(reason="deep convection not working with current defaults")
+#@pytest.mark.skip(reason="deep convection not working with current defaults")
 def test_plot_var_covar_TRMM_LBA(sim_data):
     """
     plot TRMM LBA var covar

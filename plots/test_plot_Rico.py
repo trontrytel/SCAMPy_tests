@@ -58,7 +58,6 @@ def sim_data(request):
     setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']["pressure_drag_coeff"] = 0.375
     setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']["pressure_plume_spacing"] = 500.0
 
-
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
 
