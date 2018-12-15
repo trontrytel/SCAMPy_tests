@@ -226,7 +226,7 @@ def read_data_timeseries(sim_data):
     Input:
     sim_data - netcdf Dataset with simulation results
     """
-    variables = ["updraft_cloud_cover", "updraft_cloud_base", "updraft_cloud_top", "lwp",\
+    variables = ["updraft_cloud_cover", "updraft_cloud_base", "updraft_cloud_top", "updraft_lwp",\
                  "ustar", "shf", "lhf", "Tsurface"]
 
     # read the data
@@ -438,7 +438,7 @@ def plot_timeseries_1D(data, title, folder="plots/output/"):
     mpl.rc('lines', linewidth=2, markersize=6)
 
     # data to plot
-    plot_y = [data["updraft_cloud_cover"], data["updraft_cloud_top"], data["lwp"], data["ustar"], data["lhf"], data["Tsurface"]]
+    plot_y = [data["updraft_cloud_cover"], data["updraft_cloud_top"], data["updraft_lwp"], data["ustar"], data["lhf"], data["Tsurface"]]
     y_lab  = ['updr cl. cover',            'updr CB, CT',             'LWP',       'u star',      'shf',       'T surf']
 
     # iteration over plots
