@@ -29,7 +29,7 @@ def sim_data(request):
     setup['namelist']['microphysics']['rain_model']          = True
     setup['namelist']['microphysics']['rain_const_area']     = True
     setup['namelist']['microphysics']['max_supersaturation'] = 0.0001 #0.1 # 1e-4
-    #setup['namelist']['microphysics']['rain_area_value']    = 1.
+    setup['namelist']['microphysics']['rain_area_value']     = 1.
 
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var']        = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['updraft_number']         = 5
@@ -53,9 +53,10 @@ def sim_data(request):
 
     # simulation results
     sim_data = Dataset(setup["outfile"], 'r')
+    #sim_data = Dataset("/Users/ajaruga/clones/SCAMPy/Output.Rico.6/stats/Stats.Rico.nc", 'r')
 
     # remove netcdf file after tests
-    #request.addfinalizer(pls.removing_files)
+    request.addfinalizer(pls.removing_files)
 
     return sim_data
 
@@ -75,7 +76,7 @@ def test_plot_var_covar_Rico(sim_data):
     data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_covar=True)
 
     pls.plot_var_covar_mean(data_to_plot,       "Rico_var_covar_mean.pdf")
-    pls.plot_var_covar_components(data_to_plot, "Rico_var_covar_components.pdf")
+    #pls.plot_var_covar_components(data_to_plot, "Rico_var_covar_components.pdf")
 
 def test_plot_timeseries_Rico(sim_data):
     """
@@ -85,11 +86,11 @@ def test_plot_timeseries_Rico(sim_data):
 
     pls.plot_timeseries(data_to_plot, "Rico")
 
-def test_plot_timeseries_1D_Rico(sim_data):
-    """
-    plot Rico 1D timeseries
-    """
-    data_to_plot = pls.read_data_timeseries(sim_data)
-
-    pls.plot_timeseries_1D(data_to_plot, "Rico_timeseries_1D.pdf")
-
+#def test_plot_timeseries_1D_Rico(sim_data):
+#    """
+#    plot Rico 1D timeseries
+#    """
+#    data_to_plot = pls.read_data_timeseries(sim_data)
+#
+#    pls.plot_timeseries_1D(data_to_plot, "Rico_timeseries_1D.pdf")
+#

@@ -49,6 +49,7 @@ def simulation_setup(case):
             uuid[len(uuid )-5:len(uuid)]
         )
     )
+
     outfile = outpath + "/stats/Stats." + case + ".nc"
 
     res = {"namelist"  : namelist,
@@ -80,6 +81,19 @@ def discrete_cmap(N, base_cmap=None):
     cmap_name = base.name + str(N)
     return base.from_list(cmap_name, color_list, N)
 
+def helper_var_reader(name1, name2, name3, LES_data, it):
+    var1 = np.array(LES_data["profiles/" + name1][:, it])
+    var2 = np.array(LES_data["profiles/" + name2][:, it])
+    var3 = np.array(LES_data["profiles/" + name3][:, it])
+
+    return var1 - var2 * var3
+
+def helper_var_readeri_all(name1, name2, name3, LES_data):
+    var1 = np.array(LES_data["profiles/" + name1][:, :])
+    var2 = np.array(LES_data["profiles/" + name2][:, :])
+    var3 = np.array(LES_data["profiles/" + name3][:, :])
+
+    return var1 - var2 * var3
 
 def read_data_avg(sim_data, n_steps=0, var_covar=False):
     """
@@ -91,17 +105,11 @@ def read_data_avg(sim_data, n_steps=0, var_covar=False):
     var_covar - flag for when we also want to read in the variance and covariance fields
     """
     variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean",\
-                 "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
-                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql",\
+                 "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql",\
                  "env_qr", "updraft_qr", "updraft_w", "env_w"]
-    variables_var = [\
-                 "Hvar_mean", "QTvar_mean", "HQTcov_mean", "env_Hvar", "env_QTvar", "env_HQTcov",\
-                 "Hvar_dissipation", "QTvar_dissipation", "HQTcov_dissipation",\
-                 "Hvar_entr_gain", "QTvar_entr_gain", "HQTcov_entr_gain",\
-                 "Hvar_detr_loss", "QTvar_detr_loss", "HQTcov_detr_loss",\
-                 "Hvar_shear", "QTvar_shear", "HQTcov_shear",\
-                 "Hvar_rain", "QTvar_rain", "HQTcov_rain"
-                ]
+
+    variables_var = ["Hvar_mean", "QTvar_mean", "HQTcov_mean", "env_Hvar", "env_QTvar", "env_HQTcov"]
+
     if var_covar:
         variables.extend(variables_var)
 
@@ -135,6 +143,71 @@ def read_data_avg(sim_data, n_steps=0, var_covar=False):
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
 
             data_to_plot[var][1] /= n_steps
+
+    return data_to_plot
+
+def read_LES_data_avg(sim_data, n_steps=0):
+    """
+    Read in the data from netcdf file into a dictionary that can be used for plots
+
+    Input:
+    sim_data  - netcdf Dataset with simulation results
+    n_steps   - number of timesteps to average over
+    """
+
+    # read LES tracers output
+    variables = ["temperature_mean", "thetali_mean", "qt_mean", "ql_mean",\
+                 "updraft_fraction", "env_qt", "updraft_qt", "env_ql", "updraft_ql",\
+                 "updraft_w", "env_w"]
+
+    # read the data from t=init and t=end
+    data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:])}
+
+    time = [0, -1]
+    for var in variables:
+        data_to_plot[var] = []
+        for it in range(2):
+            if ("buoyancy" in var):
+                data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 10000) #cm2/s3
+            elif ("qt" in var or "ql" in var or "qr" in var):
+                data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 1000)  #g/kg
+            elif ("p0" in var):
+                data_to_plot[var].append(np.array(sim_data["reference/" + var][time[it], :]) * 100)  #hPa
+            else:
+                data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
+
+    #data_to_plot['Hvar']   = []
+    #data_to_plot['QTvar']  = []
+    #data_to_plot['HQTcov'] = []
+    #for it in range(2):
+    #    data_to_plot['Hvar']   = helper_var_reader("env_thetali2", "env_thetali", "env_thetali", sim_data, time[it])
+    #    data_to_plot['QTvar']  = helper_var_reader("env_qt2", "env_qt", "env_qt", sim_data, time[it])
+    #    data_to_plot['HQTcov'] = helper_var_reader("env_qt_thetali", "env_thetali", "env_qt", sim_data, time[it])
+
+    # add averaging over last n_steps timesteps
+    if(n_steps > 0):
+        for var in variables:
+            for time_it in range(-2, -1*n_steps-1, -1):
+                if ("buoyancy" in var):
+                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 10000  #cm2/s3
+                elif ("qt" in var or "ql" in var or "qr" in var):
+                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 1000   #g/kg
+                elif ("p0" in var):
+                    data_to_plot[var][1] += np.array(sim_data["reference/" + var][time_it, :]) * 100   #hPa
+                else:
+                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
+
+            data_to_plot[var][1] /= n_steps
+
+    #if(n_steps > 0):
+    #    for time_it in range(-2, -1*n_steps-1, -1):
+    #        data_to_plot['Hvar'][1]   += np.array(helper_var_reader("env_thetali2", "env_thetali", "env_thetali", sim_data, time_it))
+    #        data_to_plot['QTvar'][1]  += np.array(helper_var_reader("env_qt2", "env_qt", "env_qt", sim_data, time_it))
+    #        data_to_plot['HQTcov'][1] += np.array(helper_var_reader("env_qt_thetali", "env_thetali", "env_qt", sim_data, time_it))
+
+    #    data_to_plot['Hvar'][1]   /= n_steps
+    #    data_to_plot['QTvar'][1]  /= n_steps
+    #    data_to_plot['HQTvar'][1] /= n_steps
 
     return data_to_plot
 
@@ -183,22 +256,10 @@ def read_data_srs(sim_data, var_covar=False):
     var_covar - flag for when we also want to read in the variance and covariance fields
     """
     variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean",\
-                 "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
-                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_thetal",\
-                 "env_qr", "updraft_qr", "updraft_rain_area", "env_rain_area", "updraft_w", "env_w", "env_thetal",\
-                 "massflux_h", "diffusive_flux_h", "total_flux_h",\
-                 "massflux_qt","diffusive_flux_qt","total_flux_qt",\
-                 "eddy_viscosity", "eddy_diffusivity", "mixing_length",\
-                 "entrainment_sc", "detrainment_sc", "massflux"\
-                ]
-    variables_var = [\
-                 "Hvar_mean", "QTvar_mean", "HQTcov_mean", "env_Hvar", "env_QTvar", "env_HQTcov",\
-                 "Hvar_dissipation", "QTvar_dissipation", "HQTcov_dissipation",\
-                 "Hvar_entr_gain", "QTvar_entr_gain", "HQTcov_entr_gain",\
-                 "Hvar_detr_loss", "QTvar_detr_loss", "HQTcov_detr_loss",\
-                 "Hvar_shear", "QTvar_shear", "HQTcov_shear",\
-                 "Hvar_rain", "QTvar_rain", "HQTcov_rain"\
-                ]
+                 "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_thetal",\
+                 "env_qr", "updraft_qr", "updraft_rain_area", "env_rain_area", "updraft_w", "env_w", "env_thetal"]
+
+    variables_var = ["Hvar_mean", "QTvar_mean", "HQTcov_mean", "env_Hvar", "env_QTvar", "env_HQTcov"]
     if var_covar:
         variables.extend(variables_var)
 
@@ -218,6 +279,40 @@ def read_data_srs(sim_data, var_covar=False):
 
     return data_to_plot
 
+def read_LES_data_srs(sim_data):
+    """
+    Read in the data from netcdf file into a dictionary that can be used for timeseries of profiles plots
+
+    Input:
+    sim_data  - netcdf Dataset with simulation results
+    """
+    variables = ["temperature_mean", "thetali_mean", "qt_mean", "ql_mean",\
+                 "updraft_fraction", "env_qt", "updraft_qt", "env_ql", "updraft_ql",\
+                 "updraft_w", "env_w"]
+
+    # read the data
+    data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:]), "t" : np.array(sim_data["profiles/t"][:])}
+
+    for var in variables:
+        data_to_plot[var] = []
+        if ("buoyancy" in var):
+            data_to_plot[var] = np.transpose(np.array(sim_data["profiles/"  + var][:, :])) * 10000 #cm2/s3
+        elif ("qt" in var or "ql" in var or "qr" in var):
+            data_to_plot[var] = np.transpose(np.array(sim_data["profiles/"  + var][:, :])) * 1000  #g/kg
+        elif ("p0" in var):
+            data_to_plot[var] = np.transpose(np.array(sim_data["reference/" + var][:, :])) * 100   #hPa
+        else:
+            data_to_plot[var] = np.transpose(np.array(sim_data["profiles/"  + var][:, :]))
+
+    #data_to_plot['Hvar']   = []
+    #data_to_plot['QTvar']  = []
+    #data_to_plot['HQTcov'] = []
+    #for it in range(2):
+    #    data_to_plot['Hvar']   = helper_var_reader_all("env_thetali2", "env_thetali", "env_thetali", sim_data)
+    #    data_to_plot['QTvar']  = helper_var_reader_all("env_qt2", "env_qt", "env_qt", sim_data)
+    #    data_to_plot['HQTcov'] = helper_var_reader_all("env_qt_thetali", "env_thetali", "env_qt", sim_data)
+
+    return data_to_plot
 
 def read_data_timeseries(sim_data):
     """
@@ -259,15 +354,15 @@ def plot_mean(data, title, folder="plots/output/"):
     qv_mean = np.array(data["qt_mean"]) - np.array(data["ql_mean"])
 
     # data to plot
-    x_lab  = ['QV [g/kg]', 'QL [g/kg]',      'QR [g/kg]',      'THL [K]',           'buoyancy [cm2/s3]',   'TKE [m2/s2]']
-    plot_x = [qv_mean,      data["ql_mean"],  data["qr_mean"], data["thetal_mean"],  data["buoyancy_mean"], data["tke_mean"]]
+    x_lab  = ['QV [g/kg]', 'QL [g/kg]',      'QR [g/kg]']
+    plot_x = [qv_mean,      data["ql_mean"],  data["qr_mean"]]
     color  = ["palegreen", "forestgreen"]
     label  = ["ini", "end"]
 
     # iteration over plots
     plots = []
-    for plot_it in range(6):
-        plots.append(plt.subplot(2,3,plot_it+1))
+    for plot_it in range(3):
+        plots.append(plt.subplot(1,3,plot_it+1))
                                #(rows, columns, number)
         plots[plot_it].set_xlabel(x_lab[plot_it])
         plots[plot_it].set_ylabel('z [m]')
@@ -304,33 +399,144 @@ def plot_drafts(data, title, folder="plots/output/"):
     updraft_qv = np.array(data["updraft_qt"]) - np.array(data["updraft_ql"])
 
     # data to plot
-    x_lab    = ["QV [g/kg]", "QL [g/kg]",        "QR [g/kg]",        "w [m/s]",         "updraft buoyancy [cm2/s3]",  "updraft area [%]"]
-    plot_upd = [qv_mean,     data["updraft_ql"], data["updraft_qr"], data["updraft_w"], data["updraft_buoyancy"],     data["updraft_area"]]
-    plot_env = [env_qv,      data["env_ql"],     data["env_qr"],     data["env_w"]]
-    plot_mean= [updraft_qv,  data["ql_mean"],    data["qr_mean"]]
+    x_lab    = ["QV [g/kg]", "QL [g/kg]",        "QR [g/kg]",        "updraft area [%]"]
+    plot_upd = [updraft_qv,  data["updraft_ql"], data["updraft_qr"], data["updraft_area"]]
+    plot_env = [env_qv,      data["env_ql"],     data["env_qr"]]
+    plot_mean= [qv_mean,     data["ql_mean"],    data["qr_mean"]]
 
     # iteration over plots
     plots = []
-    for plot_it in range(6):
-        plots.append(plt.subplot(2,3,plot_it+1))
+    for plot_it in range(4):
+        plots.append(plt.subplot(2,2,plot_it+1))
                                #(rows, columns, number)
         plots[plot_it].set_xlabel(x_lab[plot_it])
         plots[plot_it].set_ylabel('z [m]')
         plots[plot_it].set_ylim([0, data["z_half"][-1] + (data["z_half"][1] - data["z_half"][0]) * 0.5])
         plots[plot_it].grid(True)
         #plot updrafts
-        if (plot_it != 5):
+        if (plot_it != 3):
             plots[plot_it].plot(plot_upd[plot_it][1], data["z_half"], ".-", color="blue", label="upd")
-        if (plot_it == 5):
+        if (plot_it == 3):
             plots[plot_it].plot(plot_upd[plot_it][1] * 100, data["z_half"], ".-", color="blue", label="upd")
         # plot environment
-        if (plot_it < 4):
+        if (plot_it < 3):
             plots[plot_it].plot(plot_env[plot_it][1], data["z_half"], ".-", color="red", label="env")
         # plot mean
         if (plot_it < 3):
             plots[plot_it].plot(plot_mean[plot_it][1], data["z_half"], ".-", color="purple", label="mean")
 
     plots[0].legend()
+    plt.savefig(folder + title)
+    plt.clf()
+
+def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs, title, folder="plots/output/"):
+    """
+    Plots updraft and environment area weighted profiles from Scampy
+
+    Input:
+    data   - dictionary with previousely read it data
+    title  - name for the created plot
+    folder - folder where to save the created plot
+    """
+    # customize defaults
+    fig = plt.figure(1)
+    fig.set_figheight(6)
+    fig.set_figwidth(12)
+    mpl.rcParams.update({'font.size': 12})
+    mpl.rc('lines', linewidth=3, markersize=8)
+
+    # read data
+    scm_env_area = 1. - np.array(scm_data_srs["updraft_area"])[:,:]
+    les_env_area = 1. - np.array(les_data_srs["updraft_fraction"])[:,:]
+
+    scm_qv_mean = np.array(scm_data_avg["qt_mean"])[-1] - np.array(scm_data_avg["ql_mean"])[-1]
+    scm_ql_mean = np.array(scm_data_avg["ql_mean"])[-1]
+    scm_qr_mean = np.array(scm_data_avg["qr_mean"])[-1]
+    les_qv_mean = np.array(les_data_avg["qt_mean"])[-1] - np.array(les_data_avg["ql_mean"])[-1]
+    les_ql_mean = np.array(les_data_avg["ql_mean"])[-1]
+    les_qr_mean = np.zeros_like(scm_qv_mean)
+
+    scm_upd_qv_srs = (np.array(scm_data_srs["updraft_qt"])[:,:] - np.array(scm_data_srs["updraft_ql"])[:,:]) * np.array(scm_data_srs["updraft_area"])[:,:]
+    scm_env_qv_srs = (np.array(scm_data_srs["env_qt"])[:,:]     - np.array(scm_data_srs["env_ql"])[:,:])     * scm_env_area
+    les_upd_qv_srs = (np.array(les_data_srs["updraft_qt"])[:,:] - np.array(les_data_srs["updraft_ql"])[:,:]) * np.array(les_data_srs["updraft_fraction"])[:,:]
+    les_env_qv_srs = (np.array(les_data_srs["env_qt"])[:,:]     - np.array(les_data_srs["env_ql"])[:,:])     * les_env_area
+
+    scm_upd_ql_srs = np.array(scm_data_srs["updraft_ql"])[:,:] * np.array(scm_data_srs["updraft_area"])[:,:]
+    scm_env_ql_srs = np.array(scm_data_srs["env_ql"])[:,:]     * scm_env_area
+    les_upd_ql_srs = np.array(les_data_srs["updraft_ql"])[:,:] * np.array(les_data_srs["updraft_fraction"])[:,:]
+    les_env_ql_srs = np.array(les_data_srs["env_ql"])[:,:]     * les_env_area
+
+    scm_upd_qr_srs = np.array(scm_data_srs["updraft_qr"])[:,:] * np.array(scm_data_srs["updraft_area"])[:,:]
+    scm_env_qr_srs = np.array(scm_data_srs["env_qr"])[:,:]     * scm_env_area
+    les_upd_qr_srs = np.zeros_like(les_upd_ql_srs)
+    les_env_qr_srs = np.zeros_like(les_env_ql_srs)
+
+    scm_upd_qv = np.zeros_like(scm_qv_mean)
+    scm_upd_ql = np.zeros_like(scm_qv_mean)
+    scm_upd_qr = np.zeros_like(scm_qv_mean)
+    les_upd_qv = np.zeros_like(scm_qv_mean)
+    les_upd_ql = np.zeros_like(scm_qv_mean)
+    les_upd_qr = np.zeros_like(scm_qv_mean)
+
+    scm_env_qv = np.zeros_like(scm_qv_mean)
+    scm_env_ql = np.zeros_like(scm_qv_mean)
+    scm_env_qr = np.zeros_like(scm_qv_mean)
+    les_env_qv = np.zeros_like(scm_qv_mean)
+    les_env_ql = np.zeros_like(scm_qv_mean)
+    les_env_qr = np.zeros_like(scm_qv_mean)
+
+    for it in range(-1, -101, -1):
+        scm_upd_qv += scm_upd_qv_srs[:,it]
+        scm_env_qv += scm_env_qv_srs[:,it]
+        les_upd_qv += les_upd_qv_srs[:,it]
+        les_env_qv += les_env_qv_srs[:,it]
+
+        scm_upd_ql += scm_upd_ql_srs[:,it]
+        scm_env_ql += scm_env_ql_srs[:,it]
+        les_upd_ql += les_upd_ql_srs[:,it]
+        les_env_ql += les_env_ql_srs[:,it]
+
+        scm_upd_qr += scm_upd_qr_srs[:,it]
+        scm_env_qr += scm_env_qr_srs[:,it]
+        les_upd_qr += les_upd_qr_srs[:,it]
+        les_env_qr += les_env_qr_srs[:,it]
+
+    for arr in [scm_upd_qv, scm_env_qv, les_upd_qv, les_env_qv,\
+                scm_upd_ql, scm_env_ql, les_upd_ql, les_env_ql,\
+                scm_upd_qr, scm_env_qr, les_upd_qr, les_env_qr]:
+        arr /= 100.
+
+    # data to plot
+    x_lab    = ["upd QL [g/kg]", "env QL [g/kg]", "mean QL [g/kg]"]
+    plot_scm_upd = [scm_upd_qv,      scm_upd_ql,      scm_upd_qr]
+    plot_scm_env = [scm_env_qv,      scm_env_ql,      scm_env_qr]
+    plot_scm_mean= [scm_qv_mean,     scm_ql_mean,     scm_qr_mean]
+
+    plot_les_upd = [les_upd_qv,      les_upd_ql,      les_upd_qr]
+    plot_les_env = [les_env_qv,      les_env_ql,      les_env_qr]
+    plot_les_mean= [les_qv_mean,     les_ql_mean,     les_qr_mean]
+
+    # iteration over plots
+    plots = []
+    for plot_it in range(3):
+        plots.append(plt.subplot(1,3,plot_it+1))
+                               #(rows, columns, number)
+        plots[plot_it].set_xlabel(x_lab[plot_it])
+        plots[plot_it].set_ylabel('z [m]')
+        plots[plot_it].set_xlim([-.001, .0125])
+        plots[plot_it].set_ylim([0, scm_data_avg["z_half"][-1] + (scm_data_avg["z_half"][1] - scm_data_avg["z_half"][0]) * 0.5])
+        plots[plot_it].grid(True)
+
+    plots[0].plot(scm_upd_ql, scm_data_avg["z_half"], ".-", color="tomato")
+    plots[0].plot(les_upd_ql, les_data_avg["z_half"], ".-", color="deepskyblue")
+
+    plots[1].plot(scm_env_ql, scm_data_avg["z_half"], ".-", color="tomato")
+    plots[1].plot(les_env_ql, les_data_avg["z_half"], ".-", color="deepskyblue")
+
+    plots[2].plot(scm_ql_mean, scm_data_avg["z_half"], ".-", color="tomato", label="offline scm")
+    plots[2].plot(les_ql_mean, les_data_avg["z_half"], ".-", color="deepskyblue", label="les")
+
+    plots[2].legend()
     plt.savefig(folder + title)
     plt.clf()
 
@@ -367,8 +573,8 @@ def plot_var_covar_mean(data, title, folder="plots/output/"):
         plots[plot_it].grid(True)
         plots[plot_it].xaxis.set_major_locator(ticker.MaxNLocator(2))
 
-        plots[plot_it].plot(data[plot_var_mean[plot_it]][1], data["z_half"], ".-", label=plot_var_mean[plot_it], c="black")
-        plots[plot_it].plot(data[plot_var_env[plot_it]][1],  data["z_half"], ".-", label=plot_var_env[plot_it],  c="red")
+        plots[plot_it].plot(data[plot_var_mean[plot_it]][-1], data["z_half"], ".-", label=plot_var_mean[plot_it], c="black")
+        plots[plot_it].plot(data[plot_var_env[plot_it]][-1],  data["z_half"], ".-", label=plot_var_env[plot_it],  c="red")
 
     plots[0].legend()
     plt.tight_layout()
@@ -413,7 +619,7 @@ def plot_var_covar_components(data, title, folder="plots/output/"):
         plots[plot_it].xaxis.set_major_locator(ticker.MaxNLocator(2))
 
         for var in range(5):
-            plots[plot_it].plot(data[plot_var_data[plot_it][var]][1],   data["z_half"], ".-", label=plot_Hvar_c[var],  c=color_c[var])
+            plots[plot_it].plot(data[plot_var_data[plot_it][var]][-1],   data["z_half"], ".-", label=plot_Hvar_c[var],  c=color_c[var])
 
     plots[0].legend()
     plt.tight_layout()
@@ -489,11 +695,11 @@ def plot_timeseries(data, case, folder="plots/output/"):
     env_area = 1. - data["updraft_area"]
 
     # data to plot
-    mean_data  = [data["thetal_mean"],    data["buoyancy_mean"],    data["tke_mean"],      mean_qv,                data["ql_mean"],           data["qr_mean"]]
-    mean_label = ["mean thl [K]",         "mean buo [cm2/s3]",      "mean TKE [m2/s2]",    "mean qv [g/kg]",       "mean ql [g/kg]",          "mean qr [g/kg]"]
-    mean_cb    = [mpl.cm.Reds,            mpl.cm.Reds,              mpl.cm.Reds,           mpl.cm.Blues,           mpl.cm.Blues,              mpl.cm.Blues]
-    mean_min   = [299,                    -10,                       0,                    2,                      0,                          0]
-    mean_max   = [316,                    10,                        0.5,                  16,                     16e-5,                     1]
+    #mean_data  = [data["thetal_mean"],    data["buoyancy_mean"],    data["tke_mean"],      mean_qv,                data["ql_mean"],           data["qr_mean"]]
+    #mean_label = ["mean thl [K]",         "mean buo [cm2/s3]",      "mean TKE [m2/s2]",    "mean qv [g/kg]",       "mean ql [g/kg]",          "mean qr [g/kg]"]
+    #mean_cb    = [mpl.cm.Reds,            mpl.cm.Reds,              mpl.cm.Reds,           mpl.cm.Blues,           mpl.cm.Blues,              mpl.cm.Blues]
+    #mean_min   = [299,                    -10,                       0,                    2,                      0,                          0]
+    #mean_max   = [316,                    10,                        0.5,                  16,                     16e-5,                     1]
 
     env_data   = [data["env_thetal"],     env_area,                 data["env_w"],         env_qv,                 data["env_ql"],            data["env_qr"]]
     env_label  = ["env thl [K]",          "env area [%]",           "env w [m/s]",         "env qv [g/kg]",        "env ql [g/kg]",           "env qr [g/kg]"]
@@ -507,17 +713,17 @@ def plot_timeseries(data, case, folder="plots/output/"):
     updr_min   = [299,                    0,                        0,                     2,                      0,                         0]
     updr_max   = [316,                    0.1,                      0.025,                 16,                     14e-4,                     1]
 
-    flux_data  = [data["massflux_h"],     data["diffusive_flux_h"], data["total_flux_h"],  data["massflux_qt"],    data["diffusive_flux_qt"], data["total_flux_qt"]]
-    flux_label = ["M_FL thl",             "D_FL thl ",              "tot FL thl",          "M_FL qt",              "D_FL qt",                 "tot FL qt"]
-    flux_cb    = [mpl.cm.Spectral,        mpl.cm.Spectral,          mpl.cm.Spectral,       mpl.cm.Spectral_r,      mpl.cm.Spectral_r,         mpl.cm.Spectral_r]
-    flux_min   = [-12e-3,                 -40e-3,                   -0.04,                 0,                      0,                         0]
-    flux_max   = [16e-3,                  5e-3,                     0.01,                  0.08,                   0.07,                      0.1]
+    #flux_data  = [data["massflux_h"],     data["diffusive_flux_h"], data["total_flux_h"],  data["massflux_qt"],    data["diffusive_flux_qt"], data["total_flux_qt"]]
+    #flux_label = ["M_FL thl",             "D_FL thl ",              "tot FL thl",          "M_FL qt",              "D_FL qt",                 "tot FL qt"]
+    #flux_cb    = [mpl.cm.Spectral,        mpl.cm.Spectral,          mpl.cm.Spectral,       mpl.cm.Spectral_r,      mpl.cm.Spectral_r,         mpl.cm.Spectral_r]
+    #flux_min   = [-12e-3,                 -40e-3,                   -0.04,                 0,                      0,                         0]
+    #flux_max   = [16e-3,                  5e-3,                     0.01,                  0.08,                   0.07,                      0.1]
 
-    misc_data  = [data["eddy_viscosity"], data["eddy_diffusivity"], data["mixing_length"], data["entrainment_sc"], data["detrainment_sc"],    data["massflux"]]
-    misc_label = ["eddy visc",            "eddy diff",              "mix. length",         "entr sc",              "detr sc",                 "mass flux"]
-    misc_cb    = [mpl.cm.Blues,           mpl.cm.Blues,             mpl.cm.Blues,          mpl.cm.Blues,           mpl.cm.Blues,              mpl.cm.Blues]
-    misc_min   = [0,                      0,                        0,                     0.,                     0,                         0]
-    misc_max   = [20,                     20,                       350,                   0.06,                   0.14,                      0.05]
+    #misc_data  = [data["eddy_viscosity"], data["eddy_diffusivity"], data["mixing_length"], data["entrainment_sc"], data["detrainment_sc"],    data["massflux"]]
+    #misc_label = ["eddy visc",            "eddy diff",              "mix. length",         "entr sc",              "detr sc",                 "mass flux"]
+    #misc_cb    = [mpl.cm.Blues,           mpl.cm.Blues,             mpl.cm.Blues,          mpl.cm.Blues,           mpl.cm.Blues,              mpl.cm.Blues]
+    #misc_min   = [0,                      0,                        0,                     0.,                     0,                         0]
+    #misc_max   = [20,                     20,                       350,                   0.06,                   0.14,                      0.05]
 
     rain_data  = [data["updraft_area"],   data["updraft_rain_area"],data["updraft_qr"],    env_area,               data["env_rain_area"],     data["env_qr"]]
     rain_label = ["updr area",            "updr rain area",         "updr qr",             "env area",             "env rain area",           "env rain"]
@@ -525,15 +731,15 @@ def plot_timeseries(data, case, folder="plots/output/"):
     rain_min   = [0,                      0,                        0,                     .9,                     0,                         0]
     rain_max   = [0.1,                    0.3,                      1,                     1,                      0.2,                       1]
 
-    data_to_plot = [mean_data,  env_data,  updr_data,  flux_data,  misc_data,  rain_data]
-    labels       = [mean_label, env_label, updr_label, flux_label, misc_label, rain_label ]
-    titles       = ["01mean",   "02env",   "03updr",   "04flx",    "05misc",   "06rain"]
-    cbs          = [mean_cb,    env_cb,    updr_cb,    flux_cb,    misc_cb,    rain_cb]
-    vmin         = [mean_min,   env_min,   updr_min,   flux_min,   misc_min,   rain_min]
-    vmax         = [mean_max,   env_max,   updr_max,   flux_max,   misc_max,   rain_max]
+    data_to_plot = [env_data,  updr_data,  rain_data]
+    labels       = [env_label, updr_label, rain_label ]
+    titles       = ["02env",   "03updr",   "06rain"]
+    cbs          = [env_cb,    updr_cb,    rain_cb]
+    vmin         = [env_min,   updr_min,   rain_min]
+    vmax         = [env_max,   updr_max,   rain_max]
 
     # iteration over plots
-    for var in range(6):
+    for var in range(3):
         ax   = []
         plot = []
         for plot_it in range(6):
