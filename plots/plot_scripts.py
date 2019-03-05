@@ -440,81 +440,46 @@ def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs
     """
     # customize defaults
     fig = plt.figure(1)
-    fig.set_figheight(6)
+    fig.set_figheight(5)
     fig.set_figwidth(12)
     mpl.rcParams.update({'font.size': 12})
-    mpl.rc('lines', linewidth=3, markersize=8)
+    mpl.rc('lines', linewidth=3, markersize=6)
 
     # read data
+    tmp = np.array(scm_data_avg["ql_mean"])[-1]
     scm_env_area = 1. - np.array(scm_data_srs["updraft_area"])[:,:]
     les_env_area = 1. - np.array(les_data_srs["updraft_fraction"])[:,:]
 
-    scm_qv_mean = np.array(scm_data_avg["qt_mean"])[-1] - np.array(scm_data_avg["ql_mean"])[-1]
-    scm_ql_mean = np.array(scm_data_avg["ql_mean"])[-1]
-    scm_qr_mean = np.array(scm_data_avg["qr_mean"])[-1]
-    les_qv_mean = np.array(les_data_avg["qt_mean"])[-1] - np.array(les_data_avg["ql_mean"])[-1]
-    les_ql_mean = np.array(les_data_avg["ql_mean"])[-1]
-    les_qr_mean = np.zeros_like(scm_qv_mean)
-
-    scm_upd_qv_srs = (np.array(scm_data_srs["updraft_qt"])[:,:] - np.array(scm_data_srs["updraft_ql"])[:,:]) * np.array(scm_data_srs["updraft_area"])[:,:]
-    scm_env_qv_srs = (np.array(scm_data_srs["env_qt"])[:,:]     - np.array(scm_data_srs["env_ql"])[:,:])     * scm_env_area
-    les_upd_qv_srs = (np.array(les_data_srs["updraft_qt"])[:,:] - np.array(les_data_srs["updraft_ql"])[:,:]) * np.array(les_data_srs["updraft_fraction"])[:,:]
-    les_env_qv_srs = (np.array(les_data_srs["env_qt"])[:,:]     - np.array(les_data_srs["env_ql"])[:,:])     * les_env_area
+    scm_mean_ql_srs = np.array(scm_data_srs["ql_mean"])[:,:]
+    les_mean_ql_srs = np.array(les_data_srs["ql_mean"])[:,:]
 
     scm_upd_ql_srs = np.array(scm_data_srs["updraft_ql"])[:,:] * np.array(scm_data_srs["updraft_area"])[:,:]
     scm_env_ql_srs = np.array(scm_data_srs["env_ql"])[:,:]     * scm_env_area
     les_upd_ql_srs = np.array(les_data_srs["updraft_ql"])[:,:] * np.array(les_data_srs["updraft_fraction"])[:,:]
     les_env_ql_srs = np.array(les_data_srs["env_ql"])[:,:]     * les_env_area
 
-    scm_upd_qr_srs = np.array(scm_data_srs["updraft_qr"])[:,:] * np.array(scm_data_srs["updraft_area"])[:,:]
-    scm_env_qr_srs = np.array(scm_data_srs["env_qr"])[:,:]     * scm_env_area
-    les_upd_qr_srs = np.zeros_like(les_upd_ql_srs)
-    les_env_qr_srs = np.zeros_like(les_env_ql_srs)
+    scm_upd_ql = np.zeros_like(tmp)
+    les_upd_ql = np.zeros_like(tmp)
 
-    scm_upd_qv = np.zeros_like(scm_qv_mean)
-    scm_upd_ql = np.zeros_like(scm_qv_mean)
-    scm_upd_qr = np.zeros_like(scm_qv_mean)
-    les_upd_qv = np.zeros_like(scm_qv_mean)
-    les_upd_ql = np.zeros_like(scm_qv_mean)
-    les_upd_qr = np.zeros_like(scm_qv_mean)
+    scm_env_ql = np.zeros_like(tmp)
+    les_env_ql = np.zeros_like(tmp)
 
-    scm_env_qv = np.zeros_like(scm_qv_mean)
-    scm_env_ql = np.zeros_like(scm_qv_mean)
-    scm_env_qr = np.zeros_like(scm_qv_mean)
-    les_env_qv = np.zeros_like(scm_qv_mean)
-    les_env_ql = np.zeros_like(scm_qv_mean)
-    les_env_qr = np.zeros_like(scm_qv_mean)
+    scm_mean_ql = np.zeros_like(tmp)
+    les_mean_ql = np.zeros_like(tmp)
 
-    for it in range(-1, -101, -1):
-        scm_upd_qv += scm_upd_qv_srs[:,it]
-        scm_env_qv += scm_env_qv_srs[:,it]
-        les_upd_qv += les_upd_qv_srs[:,it]
-        les_env_qv += les_env_qv_srs[:,it]
+    avg_step = 50
+    for it in range(-1, -1*(avg_step +1 ), -1):
+        scm_upd_ql  += scm_upd_ql_srs[:,it]
+        scm_env_ql  += scm_env_ql_srs[:,it]
+        les_upd_ql  += les_upd_ql_srs[:,it]
+        les_env_ql  += les_env_ql_srs[:,it]
+        scm_mean_ql += scm_mean_ql_srs[:,it]
+        les_mean_ql += les_mean_ql_srs[:,it]
 
-        scm_upd_ql += scm_upd_ql_srs[:,it]
-        scm_env_ql += scm_env_ql_srs[:,it]
-        les_upd_ql += les_upd_ql_srs[:,it]
-        les_env_ql += les_env_ql_srs[:,it]
+    for arr in [scm_upd_ql, scm_env_ql, les_upd_ql, les_env_ql, scm_mean_ql, les_mean_ql]:
+        arr /= avg_step
 
-        scm_upd_qr += scm_upd_qr_srs[:,it]
-        scm_env_qr += scm_env_qr_srs[:,it]
-        les_upd_qr += les_upd_qr_srs[:,it]
-        les_env_qr += les_env_qr_srs[:,it]
-
-    for arr in [scm_upd_qv, scm_env_qv, les_upd_qv, les_env_qv,\
-                scm_upd_ql, scm_env_ql, les_upd_ql, les_env_ql,\
-                scm_upd_qr, scm_env_qr, les_upd_qr, les_env_qr]:
-        arr /= 100.
-
-    # data to plot
     x_lab    = ["upd QL [g/kg]", "env QL [g/kg]", "mean QL [g/kg]"]
-    plot_scm_upd = [scm_upd_qv,      scm_upd_ql,      scm_upd_qr]
-    plot_scm_env = [scm_env_qv,      scm_env_ql,      scm_env_qr]
-    plot_scm_mean= [scm_qv_mean,     scm_ql_mean,     scm_qr_mean]
-
-    plot_les_upd = [les_upd_qv,      les_upd_ql,      les_upd_qr]
-    plot_les_env = [les_env_qv,      les_env_ql,      les_env_qr]
-    plot_les_mean= [les_qv_mean,     les_ql_mean,     les_qr_mean]
 
     # iteration over plots
     plots = []
@@ -523,7 +488,7 @@ def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs
                                #(rows, columns, number)
         plots[plot_it].set_xlabel(x_lab[plot_it])
         plots[plot_it].set_ylabel('z [m]')
-        plots[plot_it].set_xlim([-.001, .0125])
+        plots[plot_it].set_xlim([-.001, .02])
         plots[plot_it].set_ylim([0, scm_data_avg["z_half"][-1] + (scm_data_avg["z_half"][1] - scm_data_avg["z_half"][0]) * 0.5])
         plots[plot_it].grid(True)
 
@@ -533,12 +498,32 @@ def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs
     plots[1].plot(scm_env_ql, scm_data_avg["z_half"], ".-", color="tomato")
     plots[1].plot(les_env_ql, les_data_avg["z_half"], ".-", color="deepskyblue")
 
-    plots[2].plot(scm_ql_mean, scm_data_avg["z_half"], ".-", color="tomato", label="offline scm")
-    plots[2].plot(les_ql_mean, les_data_avg["z_half"], ".-", color="deepskyblue", label="les")
+    plots[2].plot(scm_mean_ql, scm_data_avg["z_half"], ".-", color="tomato",      label="offline scm")
+    plots[2].plot(les_mean_ql, les_data_avg["z_half"], ".-", color="deepskyblue", label="les")
 
     plots[2].legend()
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.suptitle("Bomex")
     plt.savefig(folder + title)
     plt.clf()
+
+
+def plot_percentiles(data, title, folder="plots/output/"):
+
+    values= np.random.normal(20,2.5,10000)
+
+np.percentile(values,10)
+Out[1]: 16.780774503639915
+
+np.percentile(values,50)
+Out[2]: 19.939851436401284
+
+np.percentile(values,90)
+Out[3]: 23.158109928431234
+
+np.percentile(values,99)
+Out[4]: 25.633231120341421
 
 
 def plot_var_covar_mean(data, title, folder="plots/output/"):

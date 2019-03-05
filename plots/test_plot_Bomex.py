@@ -80,10 +80,10 @@ def test_plot_Bomex(res):
     """
     plot Bomex profiles
     """
-    data_to_plot = pls.read_data_avg(res["SCM_data"], n_steps=100)
+    data_to_plot = pls.read_data_avg(res["SCM_data"], n_steps=0)
     data_srs     = pls.read_data_srs(res["SCM_data"])
 
-    LES_data_avg = pls.read_LES_data_avg(res["LES_data"], n_steps=100)
+    LES_data_avg = pls.read_LES_data_avg(res["LES_data"], n_steps=0)
     LES_data_srs = pls.read_LES_data_srs(res["LES_data"])
 
     pls.plot_mean(data_to_plot,   "Bomex_quicklook.pdf")
