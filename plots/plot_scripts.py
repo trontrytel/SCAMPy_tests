@@ -1,5 +1,6 @@
 import sys
 sys.path.insert(0, "./")
+sys.path.insert(0, "./../SCAMPY/")
 
 import os
 import subprocess
@@ -13,7 +14,9 @@ import pprint as pp
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib import ticker
+from matplotlib import ticker, cm
+
+import scampy_wrapper as wrp
 
 def simulation_setup(case):
     """
@@ -101,8 +104,7 @@ def read_data_avg(sim_data, n_steps=0, var_covar=False):
         variables.extend(variables_var)
 
     # read the data from t=init and t=end
-    data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:])}
-
+    data_to_plot = {}
     time = [0, -1]
     for var in variables:
         data_to_plot[var] = []
@@ -111,8 +113,6 @@ def read_data_avg(sim_data, n_steps=0, var_covar=False):
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 10000) #cm2/s3
             elif ("qt" in var or "ql" in var or "qr" in var):
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 1000)  #g/kg
-            elif ("p0" in var):
-                data_to_plot[var].append(np.array(sim_data["reference/" + var][time[it], :]) * 100)  #hPa
             else:
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
 
@@ -124,12 +124,14 @@ def read_data_avg(sim_data, n_steps=0, var_covar=False):
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 10000  #cm2/s3
                 elif ("qt" in var or "ql" in var or "qr" in var):
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 1000   #g/kg
-                elif ("p0" in var):
-                    data_to_plot[var][1] += np.array(sim_data["reference/" + var][time_it, :]) * 100   #hPa
                 else:
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
 
             data_to_plot[var][1] /= n_steps
+
+    # read reference data
+    data_to_plot["z_half"] = np.array(sim_data["reference/z_half"][:])
+    data_to_plot["p0_half"] = np.array(sim_data["reference/p0_half"][:])
 
     return data_to_plot
 
@@ -148,8 +150,7 @@ def read_LES_data_avg(sim_data, n_steps=0):
                  "updraft_w", "env_w"]
 
     # read the data from t=init and t=end
-    data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:])}
-
+    data_to_plot = {}
     time = [0, -1]
     for var in variables:
         data_to_plot[var] = []
@@ -158,8 +159,6 @@ def read_LES_data_avg(sim_data, n_steps=0):
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 10000) #cm2/s3
             elif ("qt" in var or "ql" in var or "qr" in var):
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 1000)  #g/kg
-            elif ("p0" in var):
-                data_to_plot[var].append(np.array(sim_data["reference/" + var][time[it], :]) * 100)  #hPa
             else:
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
 
@@ -171,15 +170,16 @@ def read_LES_data_avg(sim_data, n_steps=0):
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 10000  #cm2/s3
                 elif ("qt" in var or "ql" in var or "qr" in var):
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 1000   #g/kg
-                elif ("p0" in var):
-                    data_to_plot[var][1] += np.array(sim_data["reference/" + var][time_it, :]) * 100   #hPa
                 else:
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
 
             data_to_plot[var][1] /= n_steps
 
-    return data_to_plot
+    # read reference data
+    data_to_plot["z_half"]  = np.array(sim_data["reference/z_half"][:])
+    data_to_plot["p0_half"] = np.array(sim_data["reference/p0_half"][:])
 
+    return data_to_plot
 
 def read_rad_data_avg(sim_data, n_steps=0):
     """
@@ -458,6 +458,7 @@ def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs
         arr /= avg_step
 
     x_lab    = ["upd QL [g/kg]", "env QL [g/kg]", "mean QL [g/kg]"]
+    focus_z = [12, 30, 42, 62,  75, 87]
 
     # iteration over plots
     plots = []
@@ -469,6 +470,8 @@ def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs
         plots[plot_it].set_xlim([-.001, .02])
         plots[plot_it].set_ylim([0, scm_data_avg["z_half"][-1] + (scm_data_avg["z_half"][1] - scm_data_avg["z_half"][0]) * 0.5])
         plots[plot_it].grid(True)
+        for iz in focus_z:
+            plots[plot_it].axhline(scm_data_avg["z_half"][iz], c="peachpuff", lw=2)
 
     plots[0].plot(scm_upd_ql, scm_data_avg["z_half"], ".-", color="tomato")
     plots[0].plot(les_upd_ql, les_data_avg["z_half"], ".-", color="blue")
@@ -607,6 +610,8 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
         th_u_95[iz] = np.percentile(th_u_val, 95)
 
 
+    focus_z = [12, 30, 42, 62,  75, 87]
+
     # iteration over plots
     # customize defaults
     fig = plt.figure(1)
@@ -624,6 +629,8 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
         plots[plot_it].set_ylabel('z [m]')
         plots[plot_it].set_ylim([0, 2000])
         plots[plot_it].grid(True)
+        for iz in focus_z:
+            plots[plot_it].axhline(scm_data_avg["z_half"][iz], c="peachpuff", lw=2)
 
     plots[0].fill_betweenx(scm_data_avg["z_half"], qt_05, qt_95, color="deepskyblue")
     plots[1].fill_betweenx(scm_data_avg["z_half"], th_05, th_95, color="deepskyblue")
@@ -665,6 +672,9 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
         plots[plot_it].set_ylabel('z [m]')
         plots[plot_it].set_ylim([0, 2000])
         plots[plot_it].grid(True)
+        for iz in focus_z:
+            plots[plot_it].axhline(scm_data_avg["z_half"][iz], c="peachpuff", lw=2)
+
 
     plots[0].plot(qt_env,  scm_data_avg["z_half"], ".-", color="blue", label="env")
     plots[0].plot(qt_upd,  scm_data_avg["z_half"], ".-", color="lightblue", label="upd")
@@ -709,6 +719,8 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
         plots[plot_it].set_ylabel('z [m]')
         plots[plot_it].set_ylim([0, 2000])
         plots[plot_it].grid(True)
+        for iz in focus_z:
+            plots[plot_it].axhline(scm_data_avg["z_half"][iz], c="peachpuff", lw=2)
 
     plots[0].plot(th_env,  scm_data_avg["z_half"], ".-", color="blue", label="env")
     plots[0].plot(th_upd,  scm_data_avg["z_half"], ".-", color="lightblue", label="upd")
@@ -748,14 +760,17 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
     mpl.rcParams.update({'font.size': 12})
     mpl.rc('lines', linewidth=3, markersize=6)
 
+    dummy_qt = np.arange(11,18,.1)
+    dummy_th = np.arange(298.5, 302.5, .1)
     plots = []
-    iz_it = [10, 30, 40, 60,  70, 80]
     for plot_it in range(6):
         plots.append(plt.subplot(3,2,plot_it+1))
                                #(rows, columns, number)
+        plots[plot_it].set_title("z = " + str(scm_data_avg["z_half"][focus_z[plot_it]]) + " [m]")
+        plots[plot_it].set_xlabel("QT [g/kg]")
+        plots[plot_it].set_ylabel("TH [K]")
 
-        iz = iz_it[plot_it]
-        print scm_data_avg["z_half"][iz]
+        iz = focus_z[plot_it]
         upd_2d_values = np.vstack([\
             np.random.multivariate_normal(\
                 [qt_upd[iz], th_upd[iz]],\
@@ -764,13 +779,78 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
             )\
         ])
 
-        hst = plots[plot_it].hist2d(upd_2d_values[:,0], upd_2d_values[:,1], bins=100)
+        hst = plots[plot_it].hist2d(\
+                  upd_2d_values[:,0],\
+                  upd_2d_values[:,1],\
+                  bins=100,\
+                  range = [[11,18], [298.5, 302.5]],\
+                  cmap=cm.Blues)
         plt.colorbar(hst[3], ax=plots[plot_it])
 
+        #TODO
+        # plot the same as weighted ql but with just ql
+        # plot actual histograms from les
+
+        dummy_T  = dummy_th * wrp.exner_c(scm_data_avg["p0_half"][focus_z[plot_it]])
+        dummy_qt_star = np.zeros_like(dummy_T)
+        for el_it in range(dummy_T.shape[0]):
+            dummy_pv_star = wrp.pv_star(dummy_T[el_it])
+            dummy_qt_star[el_it] = wrp.qv_star_c(scm_data_avg["p0_half"][focus_z[plot_it]], dummy_qt[el_it] * 1e-3, dummy_pv_star) * 1e3
+
+        plots[plot_it].plot(dummy_qt_star, dummy_th, '-', lw=2, c='red')
+
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.suptitle("Bomex")
+    plt.suptitle("Bomex - 2D updraft histograms")
     tmp_title = folder+title
-    plt.savefig(tmp_title[0:-3] + "_2d_hist_qt_upd.pdf")
+    plt.savefig(tmp_title[0:-3] + "_2d_hist_upd.pdf")
+    plt.clf()
+
+    # 2D distributions
+    fig = plt.figure(1)
+    fig.set_figheight(10)
+    fig.set_figwidth(12)
+    mpl.rcParams.update({'font.size': 12})
+    mpl.rc('lines', linewidth=3, markersize=6)
+
+    dummy_qt = np.arange(4,18,.1)
+    dummy_th = np.arange(298.5, 308.5, .1)
+    plots = []
+    for plot_it in range(6):
+        plots.append(plt.subplot(3,2,plot_it+1))
+                               #(rows, columns, number)
+        plots[plot_it].set_title("z = " + str(scm_data_avg["z_half"][focus_z[plot_it]]) + " [m]")
+        plots[plot_it].set_xlabel("QT [g/kg]")
+        plots[plot_it].set_ylabel("TH [K]")
+
+        iz = focus_z[plot_it]
+        env_2d_values = np.vstack([\
+            np.random.multivariate_normal(\
+                [qt_env[iz], th_env[iz]],\
+                [[qt_var_env[iz], cov_env[iz]], [cov_env[iz], th_var_env[iz]]],\
+                [10000]\
+            )\
+        ])
+
+        hst = plots[plot_it].hist2d(\
+                  env_2d_values[:,0],\
+                  env_2d_values[:,1],\
+                  bins=100,\
+                  range = [[4,18], [298.5, 308.5]],\
+                  cmap=cm.Blues)
+        plt.colorbar(hst[3], ax=plots[plot_it])
+
+        dummy_T  = dummy_th * wrp.exner_c(scm_data_avg["p0_half"][focus_z[plot_it]])
+        dummy_qt_star = np.zeros_like(dummy_T)
+        for el_it in range(dummy_T.shape[0]):
+            dummy_pv_star = wrp.pv_star(dummy_T[el_it])
+            dummy_qt_star[el_it] = wrp.qv_star_c(scm_data_avg["p0_half"][focus_z[plot_it]], dummy_qt[el_it] * 1e-3, dummy_pv_star) * 1e3
+
+        plots[plot_it].plot(dummy_qt_star, dummy_th, '-', lw=2, c='red')
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.suptitle("Bomex - 2D environment histograms")
+    tmp_title = folder+title
+    plt.savefig(tmp_title[0:-3] + "_2d_hist_env.pdf")
     plt.clf()
 
 
