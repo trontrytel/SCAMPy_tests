@@ -81,19 +81,6 @@ def discrete_cmap(N, base_cmap=None):
     cmap_name = base.name + str(N)
     return base.from_list(cmap_name, color_list, N)
 
-def helper_var_reader(name1, name2, name3, LES_data, it):
-    var1 = np.array(LES_data["profiles/" + name1][:, it])
-    var2 = np.array(LES_data["profiles/" + name2][:, it])
-    var3 = np.array(LES_data["profiles/" + name3][:, it])
-
-    return var1 - var2 * var3
-
-def helper_var_readeri_all(name1, name2, name3, LES_data):
-    var1 = np.array(LES_data["profiles/" + name1][:, :])
-    var2 = np.array(LES_data["profiles/" + name2][:, :])
-    var3 = np.array(LES_data["profiles/" + name3][:, :])
-
-    return var1 - var2 * var3
 
 def read_data_avg(sim_data, n_steps=0, var_covar=False):
     """
@@ -176,14 +163,6 @@ def read_LES_data_avg(sim_data, n_steps=0):
             else:
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
 
-    #data_to_plot['Hvar']   = []
-    #data_to_plot['QTvar']  = []
-    #data_to_plot['HQTcov'] = []
-    #for it in range(2):
-    #    data_to_plot['Hvar']   = helper_var_reader("env_thetali2", "env_thetali", "env_thetali", sim_data, time[it])
-    #    data_to_plot['QTvar']  = helper_var_reader("env_qt2", "env_qt", "env_qt", sim_data, time[it])
-    #    data_to_plot['HQTcov'] = helper_var_reader("env_qt_thetali", "env_thetali", "env_qt", sim_data, time[it])
-
     # add averaging over last n_steps timesteps
     if(n_steps > 0):
         for var in variables:
@@ -198,16 +177,6 @@ def read_LES_data_avg(sim_data, n_steps=0):
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
 
             data_to_plot[var][1] /= n_steps
-
-    #if(n_steps > 0):
-    #    for time_it in range(-2, -1*n_steps-1, -1):
-    #        data_to_plot['Hvar'][1]   += np.array(helper_var_reader("env_thetali2", "env_thetali", "env_thetali", sim_data, time_it))
-    #        data_to_plot['QTvar'][1]  += np.array(helper_var_reader("env_qt2", "env_qt", "env_qt", sim_data, time_it))
-    #        data_to_plot['HQTcov'][1] += np.array(helper_var_reader("env_qt_thetali", "env_thetali", "env_qt", sim_data, time_it))
-
-    #    data_to_plot['Hvar'][1]   /= n_steps
-    #    data_to_plot['QTvar'][1]  /= n_steps
-    #    data_to_plot['HQTvar'][1] /= n_steps
 
     return data_to_plot
 
@@ -288,6 +257,7 @@ def read_LES_data_srs(sim_data):
     """
     variables = ["temperature_mean", "thetali_mean", "qt_mean", "ql_mean",\
                  "updraft_fraction", "env_qt", "updraft_qt", "env_ql", "updraft_ql",\
+                 "updraft_thetali", "env_thetali",\
                  "updraft_w", "env_w"]
 
     # read the data
@@ -304,13 +274,21 @@ def read_LES_data_srs(sim_data):
         else:
             data_to_plot[var] = np.transpose(np.array(sim_data["profiles/"  + var][:, :]))
 
-    #data_to_plot['Hvar']   = []
-    #data_to_plot['QTvar']  = []
-    #data_to_plot['HQTcov'] = []
-    #for it in range(2):
-    #    data_to_plot['Hvar']   = helper_var_reader_all("env_thetali2", "env_thetali", "env_thetali", sim_data)
-    #    data_to_plot['QTvar']  = helper_var_reader_all("env_qt2", "env_qt", "env_qt", sim_data)
-    #    data_to_plot['HQTcov'] = helper_var_reader_all("env_qt_thetali", "env_thetali", "env_qt", sim_data)
+    data_to_plot['env_Hvar']   = []
+    data_to_plot['env_QTvar']  = []
+    data_to_plot['env_HQTcov'] = []
+
+    data_to_plot['upd_Hvar']   = []
+    data_to_plot['upd_QTvar']  = []
+    data_to_plot['upd_HQTcov'] = []
+
+    data_to_plot['env_Hvar']   = np.transpose(np.array(sim_data["profiles/env_thetali2"][:,:])   -  np.array(sim_data["profiles/env_thetali"][:,:]) * np.array(sim_data["profiles/env_thetali"][:,:]))
+    data_to_plot['env_QTvar']  = np.transpose(np.array(sim_data["profiles/env_qt2"][:,:])        -  np.array(sim_data["profiles/env_qt"][:,:])      * np.array(sim_data["profiles/env_qt"][:,:])) * 1e6
+    data_to_plot['env_HQTcov'] = np.transpose(np.array(sim_data["profiles/env_qt_thetali"][:,:]) -  np.array(sim_data["profiles/env_thetali"][:,:]) * np.array(sim_data["profiles/env_qt"][:,:])) * 1e3
+
+    data_to_plot['upd_Hvar']   = np.transpose(np.array(sim_data["profiles/updraft_thetali2"][:,:])   -  np.array(sim_data["profiles/updraft_thetali"][:,:]) * np.array(sim_data["profiles/updraft_thetali"][:,:]))
+    data_to_plot['upd_QTvar']  = np.transpose(np.array(sim_data["profiles/updraft_qt2"][:,:])        -  np.array(sim_data["profiles/updraft_qt"][:,:])      * np.array(sim_data["profiles/updraft_qt"][:,:])) * 1e6
+    data_to_plot['upd_HQTcov'] = np.transpose(np.array(sim_data["profiles/updraft_qt_thetali"][:,:]) -  np.array(sim_data["profiles/updraft_thetali"][:,:]) * np.array(sim_data["profiles/updraft_qt"][:,:])) * 1e3
 
     return data_to_plot
 
@@ -431,7 +409,7 @@ def plot_drafts(data, title, folder="plots/output/"):
 
 def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs, title, folder="plots/output/"):
     """
-    Plots updraft and environment area weighted profiles from Scampy
+    Plots updraft and environment area weighted profiles from Scampy and LES data
 
     Input:
     data   - dictionary with previousely read it data
@@ -493,13 +471,13 @@ def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs
         plots[plot_it].grid(True)
 
     plots[0].plot(scm_upd_ql, scm_data_avg["z_half"], ".-", color="tomato")
-    plots[0].plot(les_upd_ql, les_data_avg["z_half"], ".-", color="deepskyblue")
+    plots[0].plot(les_upd_ql, les_data_avg["z_half"], ".-", color="blue")
 
     plots[1].plot(scm_env_ql, scm_data_avg["z_half"], ".-", color="tomato")
-    plots[1].plot(les_env_ql, les_data_avg["z_half"], ".-", color="deepskyblue")
+    plots[1].plot(les_env_ql, les_data_avg["z_half"], ".-", color="blue")
 
-    plots[2].plot(scm_mean_ql, scm_data_avg["z_half"], ".-", color="tomato",      label="offline scm")
-    plots[2].plot(les_mean_ql, les_data_avg["z_half"], ".-", color="deepskyblue", label="les")
+    plots[2].plot(scm_mean_ql, scm_data_avg["z_half"], ".-", color="tomato", label="offline scm")
+    plots[2].plot(les_mean_ql, les_data_avg["z_half"], ".-", color="blue",   label="les")
 
     plots[2].legend()
 
@@ -509,21 +487,291 @@ def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs
     plt.clf()
 
 
-def plot_percentiles(data, title, folder="plots/output/"):
+def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
+    """
+    Plots LES QT and thetal with percentiles and covariance
+    """
+    # read data
+    upd_area = les_data_srs["updraft_fraction"][:,:]
+    env_area = 1. - upd_area
 
-    values= np.random.normal(20,2.5,10000)
+    qt_env_srs = les_data_srs["env_qt"][:,:]
+    th_env_srs = les_data_srs["env_thetali"][:,:]
+    qt_var_env_srs = les_data_srs["env_QTvar"][:,:]
+    th_var_env_srs = les_data_srs["env_Hvar"][:,:]
+    cov_env_srs = les_data_srs["env_HQTcov"][:,:]
 
-np.percentile(values,10)
-Out[1]: 16.780774503639915
+    qt_upd_srs = les_data_srs["updraft_qt"][:,:]
+    th_upd_srs = les_data_srs["updraft_thetali"][:,:]
+    qt_var_upd_srs = les_data_srs["upd_QTvar"][:,:]
+    th_var_upd_srs = les_data_srs["upd_Hvar"][:,:]
+    cov_upd_srs = les_data_srs["upd_HQTcov"][:,:]
 
-np.percentile(values,50)
-Out[2]: 19.939851436401284
+    avg_step = 25
+    tmp = np.array(scm_data_avg["ql_mean"])[-1]
 
-np.percentile(values,90)
-Out[3]: 23.158109928431234
+    qt_env = np.zeros_like(tmp)
+    th_env = np.zeros_like(tmp)
+    qt_upd = np.zeros_like(tmp)
+    th_upd = np.zeros_like(tmp)
+    qt_var_env = np.zeros_like(tmp)
+    th_var_env = np.zeros_like(tmp)
+    qt_var_upd = np.zeros_like(tmp)
+    th_var_upd = np.zeros_like(tmp)
+    cov_env = np.zeros_like(tmp)
+    cov_upd = np.zeros_like(tmp)
 
-np.percentile(values,99)
-Out[4]: 25.633231120341421
+    tmp_upd_cnt = np.zeros_like(tmp)
+    tmp_env_cnt = np.zeros_like(tmp)
+
+    for it in range(-1, -1*(avg_step +1 ), -1):
+        for iz in range(tmp.shape[0]):
+            if env_area[iz, it] > 0:
+                qt_env[iz]  += qt_env_srs[iz,it]
+                th_env[iz]  += th_env_srs[iz,it]
+                qt_var_env[iz] += qt_var_env_srs[iz,it]
+                th_var_env[iz] += th_var_env_srs[iz,it]
+                cov_env[iz] += cov_env_srs[iz,it]
+                tmp_env_cnt[iz] += 1
+
+            if upd_area[iz, it] > 0:
+                qt_upd[iz]  += qt_upd_srs[iz,it]
+                th_upd[iz]  += th_upd_srs[iz,it]
+                qt_var_upd[iz] += qt_var_upd_srs[iz,it]
+                th_var_upd[iz] += th_var_upd_srs[iz,it]
+                cov_upd[iz] += cov_upd_srs[iz,it]
+                tmp_upd_cnt[iz] += 1
+
+    for arr in [qt_env, th_env, qt_var_env, th_var_env, cov_env]:
+        for iz in range(arr.shape[0]):
+            if tmp_env_cnt[iz] > 0:
+                arr[iz] /= tmp_env_cnt[iz]
+            else:
+                arr[iz] = np.NaN
+
+    for arr in [qt_upd, th_upd, qt_var_upd, th_var_upd, cov_upd]:
+        for iz in range(arr.shape[0]):
+            if tmp_upd_cnt[iz] > 0:
+                arr[iz] /= tmp_upd_cnt[iz]
+            else:
+                arr[iz] = np.NaN
+
+    qt_05 = np.zeros_like(tmp)
+    qt_45 = np.zeros_like(tmp)
+    qt_55 = np.zeros_like(tmp)
+    qt_95 = np.zeros_like(tmp)
+
+    th_05 = np.zeros_like(tmp)
+    th_45 = np.zeros_like(tmp)
+    th_55 = np.zeros_like(tmp)
+    th_95 = np.zeros_like(tmp)
+
+    qt_u_05 = np.zeros_like(tmp)
+    qt_u_45 = np.zeros_like(tmp)
+    qt_u_55 = np.zeros_like(tmp)
+    qt_u_95 = np.zeros_like(tmp)
+
+    th_u_05 = np.zeros_like(tmp)
+    th_u_45 = np.zeros_like(tmp)
+    th_u_55 = np.zeros_like(tmp)
+    th_u_95 = np.zeros_like(tmp)
+
+    # calculate percentiles
+    for iz in range(tmp.shape[0]):
+        qt_val = np.random.normal(qt_env[iz], qt_var_env[iz], 10000)
+        qt_05[iz] = np.percentile(qt_val, 5)
+        qt_45[iz] = np.percentile(qt_val, 45)
+        qt_55[iz] = np.percentile(qt_val, 55)
+        qt_95[iz] = np.percentile(qt_val, 95)
+
+        if th_var_env[iz] < 0:
+            th_var_env[iz] = 0.
+        th_val = np.random.normal(th_env[iz], th_var_env[iz], 10000)
+        th_05[iz] = np.percentile(th_val, 5)
+        th_45[iz] = np.percentile(th_val, 45)
+        th_55[iz] = np.percentile(th_val, 55)
+        th_95[iz] = np.percentile(th_val, 95)
+
+    # calculate percentiles
+    for iz in range(tmp.shape[0]):
+        qt_u_val = np.random.normal(qt_upd[iz], qt_var_upd[iz], 10000)
+        qt_u_05[iz] = np.percentile(qt_u_val, 5)
+        qt_u_45[iz] = np.percentile(qt_u_val, 45)
+        qt_u_55[iz] = np.percentile(qt_u_val, 55)
+        qt_u_95[iz] = np.percentile(qt_u_val, 95)
+
+        th_u_val = np.random.normal(th_upd[iz], th_var_upd[iz], 10000)
+        th_u_05[iz] = np.percentile(th_u_val, 5)
+        th_u_45[iz] = np.percentile(th_u_val, 45)
+        th_u_55[iz] = np.percentile(th_u_val, 55)
+        th_u_95[iz] = np.percentile(th_u_val, 95)
+
+
+    # iteration over plots
+    # customize defaults
+    fig = plt.figure(1)
+    fig.set_figheight(10)
+    fig.set_figwidth(12)
+    mpl.rcParams.update({'font.size': 12})
+    mpl.rc('lines', linewidth=3, markersize=6)
+
+    x_lab    = ["env QT [g/kg]", "env TH [K]", "env cov [g/kg K]", "upd QT [g/kg]", "upd TH [K]", "upd cov [g/kg K]"]
+    plots = []
+    for plot_it in range(6):
+        plots.append(plt.subplot(2,3,plot_it+1))
+                               #(rows, columns, number)
+        plots[plot_it].set_xlabel(x_lab[plot_it])
+        plots[plot_it].set_ylabel('z [m]')
+        plots[plot_it].set_ylim([0, 2000])
+        plots[plot_it].grid(True)
+
+    plots[0].fill_betweenx(scm_data_avg["z_half"], qt_05, qt_95, color="deepskyblue")
+    plots[1].fill_betweenx(scm_data_avg["z_half"], th_05, th_95, color="deepskyblue")
+    plots[3].fill_betweenx(scm_data_avg["z_half"], qt_u_05, qt_u_95, color="deepskyblue")
+    plots[4].fill_betweenx(scm_data_avg["z_half"], th_u_05, th_u_95, color="deepskyblue")
+
+    plots[0].plot(qt_env,  scm_data_avg["z_half"], ".-", color="blue")
+    plots[1].plot(th_env,  scm_data_avg["z_half"], ".-", color="blue")
+    plots[2].plot(cov_env, scm_data_avg["z_half"], ".-", color="blue")
+
+    plots[3].plot(qt_upd,  scm_data_avg["z_half"], ".-", color="blue")
+    plots[4].plot(th_upd,  scm_data_avg["z_half"], ".-", color="blue")
+    plots[5].plot(cov_upd, scm_data_avg["z_half"], ".-", color="blue")
+
+    plots[0].set_xlim([5, 18])
+    plots[3].set_xlim([5, 18])
+    plots[1].set_xlim([298, 308])
+    plots[4].set_xlim([298, 308])
+    plots[2].set_xlim([-0.6, 0.01])
+    plots[5].set_xlim([-0.6, 0.01])
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.suptitle("Bomex")
+    plt.savefig(folder + title)
+    plt.clf()
+
+    # iteration over plots
+    # customize defaults
+    fig = plt.figure(1)
+    fig.set_figheight(10)
+    fig.set_figwidth(12)
+    mpl.rcParams.update({'font.size': 12})
+    mpl.rc('lines', linewidth=3, markersize=6)
+
+    plots = []
+    for plot_it in range(4):
+        plots.append(plt.subplot(2,2,plot_it+1))
+                               #(rows, columns, number)
+        plots[plot_it].set_ylabel('z [m]')
+        plots[plot_it].set_ylim([0, 2000])
+        plots[plot_it].grid(True)
+
+    plots[0].plot(qt_env,  scm_data_avg["z_half"], ".-", color="blue", label="env")
+    plots[0].plot(qt_upd,  scm_data_avg["z_half"], ".-", color="lightblue", label="upd")
+
+    plots[1].fill_betweenx(scm_data_avg["z_half"], (qt_05/qt_env * 100 - 100), (qt_95/qt_env * 100 - 100), color="deepskyblue")
+    plots[1].fill_betweenx(scm_data_avg["z_half"], (qt_45/qt_env * 100 - 100), (qt_55/qt_env * 100 - 100), color="blue")
+
+    plots[2].plot(qt_env,  scm_data_avg["z_half"], ".-", color="lightblue", label="env")
+    plots[2].plot(qt_upd,  scm_data_avg["z_half"], ".-", color="blue", label="upd")
+
+    plots[3].fill_betweenx(scm_data_avg["z_half"], (qt_u_05/qt_upd * 100 - 100), (qt_u_95/qt_upd * 100 - 100), color="deepskyblue")
+    plots[3].fill_betweenx(scm_data_avg["z_half"], (qt_u_45/qt_upd * 100 - 100), (qt_u_55/qt_upd * 100 - 100), color="blue")
+
+    plots[0].legend()
+    plots[2].legend()
+    plots[0].set_xlabel('QT [g/kg]')
+    plots[2].set_xlabel('QT [g/kg]')
+    plots[1].set_xlabel('QT spread around env mean [%]')
+    plots[3].set_xlabel('QT spread around upd mean [%]')
+
+    plots[1].set_xlim([-10, 10])
+    plots[3].set_xlim([-10, 10])
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.suptitle("Bomex")
+    tmp_title = folder+title
+    plt.savefig(tmp_title[0:-3] + "_spread_qt.pdf")
+    plt.clf()
+
+    # iteration over plots
+    # customize defaults
+    fig = plt.figure(1)
+    fig.set_figheight(10)
+    fig.set_figwidth(12)
+    mpl.rcParams.update({'font.size': 12})
+    mpl.rc('lines', linewidth=3, markersize=6)
+
+    plots = []
+    for plot_it in range(4):
+        plots.append(plt.subplot(2,2,plot_it+1))
+                               #(rows, columns, number)
+        plots[plot_it].set_ylabel('z [m]')
+        plots[plot_it].set_ylim([0, 2000])
+        plots[plot_it].grid(True)
+
+    plots[0].plot(th_env,  scm_data_avg["z_half"], ".-", color="blue", label="env")
+    plots[0].plot(th_upd,  scm_data_avg["z_half"], ".-", color="lightblue", label="upd")
+
+    plots[1].fill_betweenx(scm_data_avg["z_half"], (th_05/th_env * 100 - 100), (th_95/th_env * 100 - 100), color="deepskyblue")
+    plots[1].fill_betweenx(scm_data_avg["z_half"], (th_45/th_env * 100 - 100), (th_55/th_env * 100 - 100), color="blue")
+
+    plots[2].plot(th_env,  scm_data_avg["z_half"], ".-", color="lightblue", label="env")
+    plots[2].plot(th_upd,  scm_data_avg["z_half"], ".-", color="blue", label="upd")
+
+    plots[3].fill_betweenx(scm_data_avg["z_half"], (th_u_05/th_upd * 100 - 100), (th_u_95/th_upd * 100 - 100), color="deepskyblue")
+    plots[3].fill_betweenx(scm_data_avg["z_half"], (th_u_45/th_upd * 100 - 100), (th_u_55/th_upd * 100 - 100), color="blue")
+
+    plots[0].legend()
+    plots[2].legend()
+    plots[0].set_xlabel('TH [K]')
+    plots[2].set_xlabel('TH [K]')
+    plots[1].set_xlabel('TH spread around env mean [%]')
+    plots[3].set_xlabel('TH spread around upd mean [%]')
+
+    plots[0].set_xlim([298, 308])
+    plots[2].set_xlim([298, 308])
+
+    plots[1].set_xlim([-.25, .25])
+    plots[3].set_xlim([-.25, .25])
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.suptitle("Bomex")
+    tmp_title = folder+title
+    plt.savefig(tmp_title[0:-3] + "_spread_th.pdf")
+    plt.clf()
+
+    # 2D distributions
+    fig = plt.figure(1)
+    fig.set_figheight(10)
+    fig.set_figwidth(12)
+    mpl.rcParams.update({'font.size': 12})
+    mpl.rc('lines', linewidth=3, markersize=6)
+
+    plots = []
+    iz_it = [10, 30, 40, 60,  70, 80]
+    for plot_it in range(6):
+        plots.append(plt.subplot(3,2,plot_it+1))
+                               #(rows, columns, number)
+
+        iz = iz_it[plot_it]
+        print scm_data_avg["z_half"][iz]
+        upd_2d_values = np.vstack([\
+            np.random.multivariate_normal(\
+                [qt_upd[iz], th_upd[iz]],\
+                [[qt_var_upd[iz], cov_upd[iz]], [cov_upd[iz], th_var_upd[iz]]],\
+                [10000]\
+            )\
+        ])
+
+        hst = plots[plot_it].hist2d(upd_2d_values[:,0], upd_2d_values[:,1], bins=100)
+        plt.colorbar(hst[3], ax=plots[plot_it])
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.suptitle("Bomex")
+    tmp_title = folder+title
+    plt.savefig(tmp_title[0:-3] + "_2d_hist_qt_upd.pdf")
+    plt.clf()
 
 
 def plot_var_covar_mean(data, title, folder="plots/output/"):

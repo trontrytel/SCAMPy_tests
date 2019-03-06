@@ -80,16 +80,18 @@ def test_plot_Bomex(res):
     """
     plot Bomex profiles
     """
-    data_to_plot = pls.read_data_avg(res["SCM_data"], n_steps=0)
-    data_srs     = pls.read_data_srs(res["SCM_data"])
+    SCM_data_avg = pls.read_data_avg(res["SCM_data"], n_steps=50)
+    SCM_data_srs = pls.read_data_srs(res["SCM_data"])
 
-    LES_data_avg = pls.read_LES_data_avg(res["LES_data"], n_steps=0)
+    LES_data_avg = pls.read_LES_data_avg(res["LES_data"], n_steps=50)
     LES_data_srs = pls.read_LES_data_srs(res["LES_data"])
 
-    pls.plot_mean(data_to_plot,   "Bomex_quicklook.pdf")
-    pls.plot_drafts(data_to_plot, "Bomex_quicklook_drafts.pdf")
+    pls.plot_mean(SCM_data_avg,   "Bomex_quicklook.pdf")
+    pls.plot_drafts(SCM_data_avg, "Bomex_quicklook_drafts.pdf")
 
-    pls.plot_drafts_area_wght(data_to_plot, data_srs, LES_data_avg, LES_data_srs, "Bomex_quicklook_drafts_wght.pdf")
+    pls.plot_drafts_area_wght(SCM_data_avg, SCM_data_srs, LES_data_avg, LES_data_srs, "Bomex_quicklook_drafts_wght.pdf")
+
+    pls.plot_percentiles(LES_data_srs, SCM_data_avg, "Bomex_percentiles.pdf")
 
 #def test_plot_timeseries_Bomex(res):
 #    """
