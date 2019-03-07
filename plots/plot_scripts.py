@@ -15,6 +15,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import ticker, cm
+from matplotlib.colors import LogNorm
 
 import scampy_wrapper as wrp
 
@@ -458,7 +459,7 @@ def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs
         arr /= avg_step
 
     x_lab    = ["upd QL [g/kg]", "env QL [g/kg]", "mean QL [g/kg]"]
-    focus_z = [12, 30, 42, 62,  75, 87]
+    focus_z = [12, 27, 42, 62,  75, 90]
 
     # iteration over plots
     plots = []
@@ -468,6 +469,88 @@ def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs
         plots[plot_it].set_xlabel(x_lab[plot_it])
         plots[plot_it].set_ylabel('z [m]')
         plots[plot_it].set_xlim([-.001, .02])
+        plots[plot_it].set_ylim([0, scm_data_avg["z_half"][-1] + (scm_data_avg["z_half"][1] - scm_data_avg["z_half"][0]) * 0.5])
+        plots[plot_it].grid(True)
+        for iz in focus_z:
+            plots[plot_it].axhline(scm_data_avg["z_half"][iz], c="peachpuff", lw=2)
+
+    plots[0].plot(scm_upd_ql, scm_data_avg["z_half"], ".-", color="tomato")
+    plots[0].plot(les_upd_ql, les_data_avg["z_half"], ".-", color="blue")
+
+    plots[1].plot(scm_env_ql, scm_data_avg["z_half"], ".-", color="tomato")
+    plots[1].plot(les_env_ql, les_data_avg["z_half"], ".-", color="blue")
+
+    plots[2].plot(scm_mean_ql, scm_data_avg["z_half"], ".-", color="tomato", label="offline scm")
+    plots[2].plot(les_mean_ql, les_data_avg["z_half"], ".-", color="blue",   label="les")
+
+    plots[2].legend()
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.suptitle("Bomex")
+    plt.savefig(folder + title)
+    plt.clf()
+
+def plot_drafts_area_non_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs, title, folder="plots/output/"):
+    """
+    Plots updraft and environment area weighted profiles from Scampy and LES data
+
+    Input:
+    data   - dictionary with previousely read it data
+    title  - name for the created plot
+    folder - folder where to save the created plot
+    """
+    # customize defaults
+    fig = plt.figure(1)
+    fig.set_figheight(5)
+    fig.set_figwidth(12)
+    mpl.rcParams.update({'font.size': 12})
+    mpl.rc('lines', linewidth=3, markersize=6)
+
+    # read data
+    tmp = np.array(scm_data_avg["ql_mean"])[-1]
+    scm_env_area = 1. - np.array(scm_data_srs["updraft_area"])[:,:]
+    les_env_area = 1. - np.array(les_data_srs["updraft_fraction"])[:,:]
+
+    scm_mean_ql_srs = np.array(scm_data_srs["ql_mean"])[:,:]
+    les_mean_ql_srs = np.array(les_data_srs["ql_mean"])[:,:]
+
+    scm_upd_ql_srs = np.array(scm_data_srs["updraft_ql"])[:,:]
+    scm_env_ql_srs = np.array(scm_data_srs["env_ql"])[:,:]
+    les_upd_ql_srs = np.array(les_data_srs["updraft_ql"])[:,:]
+    les_env_ql_srs = np.array(les_data_srs["env_ql"])[:,:]
+
+    scm_upd_ql = np.zeros_like(tmp)
+    les_upd_ql = np.zeros_like(tmp)
+
+    scm_env_ql = np.zeros_like(tmp)
+    les_env_ql = np.zeros_like(tmp)
+
+    scm_mean_ql = np.zeros_like(tmp)
+    les_mean_ql = np.zeros_like(tmp)
+
+    avg_step = 50
+    for it in range(-1, -1*(avg_step +1 ), -1):
+        scm_upd_ql  += scm_upd_ql_srs[:,it]
+        scm_env_ql  += scm_env_ql_srs[:,it]
+        les_upd_ql  += les_upd_ql_srs[:,it]
+        les_env_ql  += les_env_ql_srs[:,it]
+        scm_mean_ql += scm_mean_ql_srs[:,it]
+        les_mean_ql += les_mean_ql_srs[:,it]
+
+    for arr in [scm_upd_ql, scm_env_ql, les_upd_ql, les_env_ql, scm_mean_ql, les_mean_ql]:
+        arr /= avg_step
+
+    x_lab    = ["upd QL [g/kg]", "env QL [g/kg]", "mean QL [g/kg]"]
+    focus_z = [12, 27, 42, 62,  75, 90]
+
+    # iteration over plots
+    plots = []
+    for plot_it in range(3):
+        plots.append(plt.subplot(1,3,plot_it+1))
+                               #(rows, columns, number)
+        plots[plot_it].set_xlabel(x_lab[plot_it])
+        plots[plot_it].set_ylabel('z [m]')
+        #plots[plot_it].set_xlim([-.001, .02])
         plots[plot_it].set_ylim([0, scm_data_avg["z_half"][-1] + (scm_data_avg["z_half"][1] - scm_data_avg["z_half"][0]) * 0.5])
         plots[plot_it].grid(True)
         for iz in focus_z:
@@ -610,7 +693,7 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
         th_u_95[iz] = np.percentile(th_u_val, 95)
 
 
-    focus_z = [12, 30, 42, 62,  75, 87]
+    focus_z = [12, 27, 42, 62,  75, 90]
 
     # iteration over plots
     # customize defaults
@@ -775,7 +858,7 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
             np.random.multivariate_normal(\
                 [qt_upd[iz], th_upd[iz]],\
                 [[qt_var_upd[iz], cov_upd[iz]], [cov_upd[iz], th_var_upd[iz]]],\
-                [10000]\
+                [100000]\
             )\
         ])
 
@@ -784,12 +867,9 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
                   upd_2d_values[:,1],\
                   bins=100,\
                   range = [[11,18], [298.5, 302.5]],\
-                  cmap=cm.Blues)
+                  cmap=cm.Blues,\
+                  norm=LogNorm())
         plt.colorbar(hst[3], ax=plots[plot_it])
-
-        #TODO
-        # plot the same as weighted ql but with just ql
-        # plot actual histograms from les
 
         dummy_T  = dummy_th * wrp.exner_c(scm_data_avg["p0_half"][focus_z[plot_it]])
         dummy_qt_star = np.zeros_like(dummy_T)
@@ -797,7 +877,10 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
             dummy_pv_star = wrp.pv_star(dummy_T[el_it])
             dummy_qt_star[el_it] = wrp.qv_star_c(scm_data_avg["p0_half"][focus_z[plot_it]], dummy_qt[el_it] * 1e-3, dummy_pv_star) * 1e3
 
-        plots[plot_it].plot(dummy_qt_star, dummy_th, '-', lw=2, c='red')
+        plots[plot_it].plot(dummy_qt_star, dummy_th, '-', lw=1, c='red')
+
+        plots[plot_it].axhline(th_upd[iz], c="lightgray", lw=1)
+        plots[plot_it].axvline(qt_upd[iz], c="lightgray", lw=1)
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.suptitle("Bomex - 2D updraft histograms")
@@ -827,7 +910,7 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
             np.random.multivariate_normal(\
                 [qt_env[iz], th_env[iz]],\
                 [[qt_var_env[iz], cov_env[iz]], [cov_env[iz], th_var_env[iz]]],\
-                [10000]\
+                [100000]\
             )\
         ])
 
@@ -836,7 +919,8 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
                   env_2d_values[:,1],\
                   bins=100,\
                   range = [[4,18], [298.5, 308.5]],\
-                  cmap=cm.Blues)
+                  cmap=cm.Blues,\
+                  norm=LogNorm())
         plt.colorbar(hst[3], ax=plots[plot_it])
 
         dummy_T  = dummy_th * wrp.exner_c(scm_data_avg["p0_half"][focus_z[plot_it]])
@@ -845,7 +929,10 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
             dummy_pv_star = wrp.pv_star(dummy_T[el_it])
             dummy_qt_star[el_it] = wrp.qv_star_c(scm_data_avg["p0_half"][focus_z[plot_it]], dummy_qt[el_it] * 1e-3, dummy_pv_star) * 1e3
 
-        plots[plot_it].plot(dummy_qt_star, dummy_th, '-', lw=2, c='red')
+        plots[plot_it].plot(dummy_qt_star, dummy_th, '-', lw=1, c='red')
+
+        plots[plot_it].axhline(th_env[iz], c="lightgray", lw=1)
+        plots[plot_it].axvline(qt_env[iz], c="lightgray", lw=1)
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.suptitle("Bomex - 2D environment histograms")

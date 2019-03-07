@@ -90,6 +90,7 @@ def test_plot_Bomex(res):
     pls.plot_drafts(SCM_data_avg, "Bomex_quicklook_drafts.pdf")
 
     pls.plot_drafts_area_wght(SCM_data_avg, SCM_data_srs, LES_data_avg, LES_data_srs, "Bomex_quicklook_drafts_wght.pdf")
+    pls.plot_drafts_area_non_wght(SCM_data_avg, SCM_data_srs, LES_data_avg, LES_data_srs, "Bomex_quicklook_drafts_non_wght.pdf")
 
     pls.plot_percentiles(LES_data_srs, SCM_data_avg, "Bomex_percentiles.pdf")
 
