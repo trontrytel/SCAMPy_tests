@@ -117,6 +117,9 @@ def read_data_avg(sim_data, n_steps=0, var_covar=False):
             else:
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
 
+    # TODO - should be fixed so that I divide by the number of times where an updraft was present
+    # and not the total number of timesteps
+    # this matters for the places with small to non-existend updraft fractions
     # add averaging over last n_steps timesteps
     if(n_steps > 0):
         for var in variables:
@@ -136,7 +139,7 @@ def read_data_avg(sim_data, n_steps=0, var_covar=False):
 
     return data_to_plot
 
-def read_LES_data_avg(sim_data, n_steps=0):
+def read_LES_data_avg(sim_data, simname, n_steps=0):
     """
     Read in the data from netcdf file into a dictionary that can be used for plots
 
@@ -164,6 +167,7 @@ def read_LES_data_avg(sim_data, n_steps=0):
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
 
     # add averaging over last n_steps timesteps
+    # TODO - see todo about averaging for Scampy
     if(n_steps > 0):
         for var in variables:
             for time_it in range(-2, -1*n_steps-1, -1):
@@ -177,8 +181,12 @@ def read_LES_data_avg(sim_data, n_steps=0):
             data_to_plot[var][1] /= n_steps
 
     # read reference data
-    data_to_plot["z_half"]  = np.array(sim_data["reference/z_half"][:])
-    data_to_plot["p0_half"] = np.array(sim_data["reference/p0_half"][:])
+    if simname == 'Bomex':
+        data_to_plot["z_half"]  = np.array(sim_data["reference/z_half"][:])
+        data_to_plot["p0_half"] = np.array(sim_data["reference/p0_half"][:])
+    else:
+        data_to_plot["z_half"]  = np.array(sim_data["reference/z"][:])
+        data_to_plot["p0_half"] = np.array(sim_data["reference/p0"][:])
 
     return data_to_plot
 
@@ -204,6 +212,7 @@ def read_rad_data_avg(sim_data, n_steps=0):
                 rad_data[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
 
     # add averaging over last n_steps timesteps
+    # TODO - see TODO about averaging
     if(n_steps > 0):
         for var in variables:
             for time_it in range(-2, -1*n_steps-1, -1):
@@ -408,7 +417,7 @@ def plot_drafts(data, title, folder="plots/output/"):
     plt.savefig(folder + title)
     plt.clf()
 
-def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs, title, folder="plots/output/"):
+def plot_drafts_area_wght(scm_data_srs, les_data_srs, title, simname, avg_step=30, folder="plots/output/"):
     """
     Plots updraft and environment area weighted profiles from Scampy and LES data
 
@@ -417,286 +426,263 @@ def plot_drafts_area_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs
     title  - name for the created plot
     folder - folder where to save the created plot
     """
+    if simname == 'Bomex':
+        focus_z = [12, 27, 42, 62,  75, 90]
+        x_range = [-.001, .015]
+    elif simname == 'Dycoms_RF01':
+        focus_z = [120, 130, 140, 150,  160, 170]
+        x_range = [-.01, .38]
+    else:
+        print "Unrecognized simulation name"
+        assert(False)
+
     # customize defaults
     fig = plt.figure(1)
-    fig.set_figheight(5)
+    fig.set_figheight(8)
     fig.set_figwidth(12)
     mpl.rcParams.update({'font.size': 12})
     mpl.rc('lines', linewidth=3, markersize=6)
 
     # read data
-    tmp = np.array(scm_data_avg["ql_mean"])[-1]
-    scm_env_area = 1. - np.array(scm_data_srs["updraft_area"])[:,:]
-    les_env_area = 1. - np.array(les_data_srs["updraft_fraction"])[:,:]
+    scm_srs_dict = {}
+    scm_avg_dict = {}
+    les_srs_dict = {}
+    les_avg_dict = {}
 
-    scm_mean_ql_srs = np.array(scm_data_srs["ql_mean"])[:,:]
-    les_mean_ql_srs = np.array(les_data_srs["ql_mean"])[:,:]
+    height = np.array(scm_data_srs["z_half"][:])
 
-    scm_upd_ql_srs = np.array(scm_data_srs["updraft_ql"])[:,:] * np.array(scm_data_srs["updraft_area"])[:,:]
-    scm_env_ql_srs = np.array(scm_data_srs["env_ql"])[:,:]     * scm_env_area
-    les_upd_ql_srs = np.array(les_data_srs["updraft_ql"])[:,:] * np.array(les_data_srs["updraft_fraction"])[:,:]
-    les_env_ql_srs = np.array(les_data_srs["env_ql"])[:,:]     * les_env_area
+    scm_srs_dict["upd_area"] =  np.array(scm_data_srs["updraft_area"])[:,:]
+    scm_srs_dict["env_area"] = 1. - scm_srs_dict["upd_area"]
+    les_srs_dict["upd_area"] =  np.array(les_data_srs["updraft_fraction"])[:,:]
+    les_srs_dict["env_area"] = 1. - les_srs_dict["upd_area"]
 
-    scm_upd_ql = np.zeros_like(tmp)
-    les_upd_ql = np.zeros_like(tmp)
+    scm_srs_dict["mean_ql"] = np.array(scm_data_srs["ql_mean"])[:,:]
+    les_srs_dict["mean_ql"] = np.array(les_data_srs["ql_mean"])[:,:]
 
-    scm_env_ql = np.zeros_like(tmp)
-    les_env_ql = np.zeros_like(tmp)
+    scm_srs_dict["upd_ql"] = np.array(scm_data_srs["updraft_ql"])[:,:]
+    scm_srs_dict["env_ql"] = np.array(scm_data_srs["env_ql"])[:,:]
+    les_srs_dict["upd_ql"] = np.array(les_data_srs["updraft_ql"])[:,:]
+    les_srs_dict["env_ql"] = np.array(les_data_srs["env_ql"])[:,:]
 
-    scm_mean_ql = np.zeros_like(tmp)
-    les_mean_ql = np.zeros_like(tmp)
+    scm_srs_dict["upd_ql_w"] = scm_srs_dict["upd_ql"] * scm_srs_dict["upd_area"]
+    scm_srs_dict["env_ql_w"] = scm_srs_dict["env_ql"] * scm_srs_dict["env_area"]
+    les_srs_dict["upd_ql_w"] = les_srs_dict["upd_ql"] * les_srs_dict["upd_area"]
+    les_srs_dict["env_ql_w"] = les_srs_dict["env_ql"] * les_srs_dict["env_area"]
 
-    avg_step = 50
+    # empty arrays for average quantities
+    for key in ["mean_ql", "upd_ql", "upd_ql_w", "env_ql", "env_ql_w", "upd_cnt", "env_cnt"]:
+        les_avg_dict[key] = np.zeros_like(height)
+        scm_avg_dict[key] = np.zeros_like(height)
+
+    # average only in places where you have updrafts/environment
     for it in range(-1, -1*(avg_step +1 ), -1):
-        scm_upd_ql  += scm_upd_ql_srs[:,it]
-        scm_env_ql  += scm_env_ql_srs[:,it]
-        les_upd_ql  += les_upd_ql_srs[:,it]
-        les_env_ql  += les_env_ql_srs[:,it]
-        scm_mean_ql += scm_mean_ql_srs[:,it]
-        les_mean_ql += les_mean_ql_srs[:,it]
+        for iz in range(height.shape[0]):
+            if scm_srs_dict["upd_area"][iz, it] > 0.:
+                scm_avg_dict["upd_cnt"][iz]  += 1.
+                for var in ["upd_ql", "upd_ql_w"]:
+                    scm_avg_dict[var][iz] += scm_srs_dict[var][iz,it]
+            if scm_srs_dict["env_area"][iz, it] > 0.:
+                scm_avg_dict["env_cnt"][iz] += 1.
+                for var in ["env_ql", "env_ql_w"]:
+                    scm_avg_dict[var][iz] += scm_srs_dict[var][iz,it]
+            if les_srs_dict["upd_area"][iz, it] > 0.:
+                les_avg_dict["upd_cnt"][iz]  += 1.
+                for var in ["upd_ql", "upd_ql_w"]:
+                    les_avg_dict[var][iz] += les_srs_dict[var][iz,it]
+            if les_srs_dict["env_area"][iz, it] > 0.:
+                les_avg_dict["env_cnt"][iz]  += 1.
+                for var in ["env_ql", "env_ql_w"]:
+                    les_avg_dict[var][iz] += les_srs_dict[var][iz,it]
 
-    for arr in [scm_upd_ql, scm_env_ql, les_upd_ql, les_env_ql, scm_mean_ql, les_mean_ql]:
-        arr /= avg_step
+        scm_avg_dict["mean_ql"] += scm_srs_dict["mean_ql"][:,it]
+        les_avg_dict["mean_ql"] += les_srs_dict["mean_ql"][:,it]
 
-    x_lab    = ["upd QL [g/kg]", "env QL [g/kg]", "mean QL [g/kg]"]
-    focus_z = [12, 27, 42, 62,  75, 90]
+    for data_dict in [scm_avg_dict, les_avg_dict]:
+        data_dict["mean_ql"] /= avg_step
+
+    for iz in range(height.shape[0]):
+        for var in ["upd_ql", "upd_ql_w"]:
+
+            if scm_avg_dict["upd_cnt"][iz] > 0:
+                scm_avg_dict[var][iz] /= scm_avg_dict["upd_cnt"][iz]
+            else:
+                scm_avg_dict[var][iz] = np.NaN
+
+            if les_avg_dict["upd_cnt"][iz] > 0:
+                les_avg_dict[var][iz] /= les_avg_dict["upd_cnt"][iz]
+            else:
+                les_avg_dict[var][iz] = np.NaN
+
+        for var in ["env_ql", "env_ql_w"]:
+
+            if scm_avg_dict["env_cnt"][iz] > 0:
+                scm_avg_dict[var][iz] /= scm_avg_dict["env_cnt"][iz]
+            else:
+                scm_avg_dict[var][iz] = np.NaN
+
+            if les_avg_dict["env_cnt"][iz] > 0:
+                les_avg_dict[var][iz] /= les_avg_dict["env_cnt"][iz]
+            else:
+                les_avg_dict[var][iz] = np.NaN
+
+    x_lab    = ["upd QL [g/kg]", "env QL [g/kg]", "mean QL [g/kg]", "upd QL * a [g/kg]", "env QL * a [g/kg]", "mean QL [g/kg]"]
 
     # iteration over plots
     plots = []
-    for plot_it in range(3):
-        plots.append(plt.subplot(1,3,plot_it+1))
+    for plot_it in range(6):
+        plots.append(plt.subplot(2,3,plot_it+1))
                                #(rows, columns, number)
         plots[plot_it].set_xlabel(x_lab[plot_it])
         plots[plot_it].set_ylabel('z [m]')
-        plots[plot_it].set_xlim([-.001, .02])
-        plots[plot_it].set_ylim([0, scm_data_avg["z_half"][-1] + (scm_data_avg["z_half"][1] - scm_data_avg["z_half"][0]) * 0.5])
+        if plot_it >= 3:
+            plots[plot_it].set_xlim(x_range)
+        plots[plot_it].set_ylim([0, height[-1] + (height[1] - height[0]) * 0.5])
         plots[plot_it].grid(True)
         for iz in focus_z:
-            plots[plot_it].axhline(scm_data_avg["z_half"][iz], c="peachpuff", lw=2)
+            plots[plot_it].axhline(height[iz], c="peachpuff", lw=2)
 
-    plots[0].plot(scm_upd_ql, scm_data_avg["z_half"], ".-", color="tomato")
-    plots[0].plot(les_upd_ql, les_data_avg["z_half"], ".-", color="blue")
+    plots[0].plot(les_avg_dict["upd_ql"], height, ".-", color="blue")
+    plots[0].plot(scm_avg_dict["upd_ql"], height, ".-", color="tomato")
 
-    plots[1].plot(scm_env_ql, scm_data_avg["z_half"], ".-", color="tomato")
-    plots[1].plot(les_env_ql, les_data_avg["z_half"], ".-", color="blue")
+    plots[1].plot(les_avg_dict["env_ql"], height, ".-", color="blue")
+    plots[1].plot(scm_avg_dict["env_ql"], height, ".-", color="tomato")
 
-    plots[2].plot(scm_mean_ql, scm_data_avg["z_half"], ".-", color="tomato", label="offline scm")
-    plots[2].plot(les_mean_ql, les_data_avg["z_half"], ".-", color="blue",   label="les")
+    plots[2].plot(les_avg_dict["mean_ql"], height, ".-", color="blue",   label="les")
+    plots[2].plot(scm_avg_dict["mean_ql"], height, ".-", color="tomato", label="offline scm")
+
+    plots[3].plot(les_avg_dict["upd_ql_w"], height, ".-", color="blue")
+    plots[3].plot(scm_avg_dict["upd_ql_w"], height, ".-", color="tomato")
+
+    plots[4].plot(les_avg_dict["env_ql_w"], height, ".-", color="blue")
+    plots[4].plot(scm_avg_dict["env_ql_w"], height, ".-", color="tomato")
+
+    plots[5].plot(les_avg_dict["mean_ql"], height, ".-", color="blue")
+    plots[5].plot(scm_avg_dict["mean_ql"], height, ".-", color="tomato")
 
     plots[2].legend()
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.suptitle("Bomex")
+    plt.suptitle(simname)
     plt.savefig(folder + title)
     plt.clf()
 
-def plot_drafts_area_non_wght(scm_data_avg, scm_data_srs, les_data_avg, les_data_srs, title, folder="plots/output/"):
-    """
-    Plots updraft and environment area weighted profiles from Scampy and LES data
-
-    Input:
-    data   - dictionary with previousely read it data
-    title  - name for the created plot
-    folder - folder where to save the created plot
-    """
-    # customize defaults
-    fig = plt.figure(1)
-    fig.set_figheight(5)
-    fig.set_figwidth(12)
-    mpl.rcParams.update({'font.size': 12})
-    mpl.rc('lines', linewidth=3, markersize=6)
-
-    # read data
-    tmp = np.array(scm_data_avg["ql_mean"])[-1]
-    scm_env_area = 1. - np.array(scm_data_srs["updraft_area"])[:,:]
-    les_env_area = 1. - np.array(les_data_srs["updraft_fraction"])[:,:]
-
-    scm_mean_ql_srs = np.array(scm_data_srs["ql_mean"])[:,:]
-    les_mean_ql_srs = np.array(les_data_srs["ql_mean"])[:,:]
-
-    scm_upd_ql_srs = np.array(scm_data_srs["updraft_ql"])[:,:]
-    scm_env_ql_srs = np.array(scm_data_srs["env_ql"])[:,:]
-    les_upd_ql_srs = np.array(les_data_srs["updraft_ql"])[:,:]
-    les_env_ql_srs = np.array(les_data_srs["env_ql"])[:,:]
-
-    scm_upd_ql = np.zeros_like(tmp)
-    les_upd_ql = np.zeros_like(tmp)
-
-    scm_env_ql = np.zeros_like(tmp)
-    les_env_ql = np.zeros_like(tmp)
-
-    scm_mean_ql = np.zeros_like(tmp)
-    les_mean_ql = np.zeros_like(tmp)
-
-    avg_step = 50
-    for it in range(-1, -1*(avg_step +1 ), -1):
-        scm_upd_ql  += scm_upd_ql_srs[:,it]
-        scm_env_ql  += scm_env_ql_srs[:,it]
-        les_upd_ql  += les_upd_ql_srs[:,it]
-        les_env_ql  += les_env_ql_srs[:,it]
-        scm_mean_ql += scm_mean_ql_srs[:,it]
-        les_mean_ql += les_mean_ql_srs[:,it]
-
-    for arr in [scm_upd_ql, scm_env_ql, les_upd_ql, les_env_ql, scm_mean_ql, les_mean_ql]:
-        arr /= avg_step
-
-    x_lab    = ["upd QL [g/kg]", "env QL [g/kg]", "mean QL [g/kg]"]
-    focus_z = [12, 27, 42, 62,  75, 90]
-
-    # iteration over plots
-    plots = []
-    for plot_it in range(3):
-        plots.append(plt.subplot(1,3,plot_it+1))
-                               #(rows, columns, number)
-        plots[plot_it].set_xlabel(x_lab[plot_it])
-        plots[plot_it].set_ylabel('z [m]')
-        #plots[plot_it].set_xlim([-.001, .02])
-        plots[plot_it].set_ylim([0, scm_data_avg["z_half"][-1] + (scm_data_avg["z_half"][1] - scm_data_avg["z_half"][0]) * 0.5])
-        plots[plot_it].grid(True)
-        for iz in focus_z:
-            plots[plot_it].axhline(scm_data_avg["z_half"][iz], c="peachpuff", lw=2)
-
-    plots[0].plot(scm_upd_ql, scm_data_avg["z_half"], ".-", color="tomato")
-    plots[0].plot(les_upd_ql, les_data_avg["z_half"], ".-", color="blue")
-
-    plots[1].plot(scm_env_ql, scm_data_avg["z_half"], ".-", color="tomato")
-    plots[1].plot(les_env_ql, les_data_avg["z_half"], ".-", color="blue")
-
-    plots[2].plot(scm_mean_ql, scm_data_avg["z_half"], ".-", color="tomato", label="offline scm")
-    plots[2].plot(les_mean_ql, les_data_avg["z_half"], ".-", color="blue",   label="les")
-
-    plots[2].legend()
-
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.suptitle("Bomex")
-    plt.savefig(folder + title)
-    plt.clf()
-
-
-def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
+def plot_percentiles(les_data_srs, scm_data_avg, title, simname, avg_step=30, folder="plots/output/"):
     """
     Plots LES QT and thetal with percentiles and covariance
     """
+    suptitle = simname
+    n_bins = 100
+    # ranges to specify for plotting
+    if simname == 'Bomex':
+        focus_z  = [12, 27, 42, 62,  75, 90]
+        y_range  = [0, 2000]
+
+        th_range        = [298, 308]
+        qt_range        = [4, 18]
+        cov_range       = [-.6, .01]
+
+        qt_spread_range = [-10, 10]
+        th_spread_range = [-.25, .25]
+
+        upd_dummy_qt_range = [11, 18]
+        upd_dummy_th_range = [298.5, 302.5]
+        env_dummy_qt_range = qt_range
+        env_dummy_th_range = th_range
+
+    elif simname == 'Dycoms_RF01':
+        focus_z  = [120, 130, 140, 150,  160, 170]
+        y_range  = [0, 1000]
+
+        th_range        = [285, 305]
+        qt_range        = [0, 11]
+        cov_range       = [-1., .01]
+
+        qt_spread_range = [-10, 10]
+        th_spread_range = [-.25, .25]
+
+        env_dummy_qt_range = qt_range
+        env_dummy_th_range = th_range
+        upd_dummy_qt_range = qt_range
+        upd_dummy_th_range = th_range
+
+    else:
+        print "unrecognized simulation name"
+        assert(False)
+
     # read data
-    upd_area = les_data_srs["updraft_fraction"][:,:]
-    env_area = 1. - upd_area
+    les_srs_dict = {}
+    les_avg_dict = {}
+    upd_var = ["updraft_qt", "updraft_thetali", "upd_QTvar", "upd_Hvar", "upd_HQTcov"]
+    env_var = ["env_qt", "env_thetali", "env_QTvar", "env_Hvar", "env_HQTcov"]
+    all_var = upd_var + env_var
 
-    qt_env_srs = les_data_srs["env_qt"][:,:]
-    th_env_srs = les_data_srs["env_thetali"][:,:]
-    qt_var_env_srs = les_data_srs["env_QTvar"][:,:]
-    th_var_env_srs = les_data_srs["env_Hvar"][:,:]
-    cov_env_srs = les_data_srs["env_HQTcov"][:,:]
+    height = np.array(les_data_srs["z_half"][:])
 
-    qt_upd_srs = les_data_srs["updraft_qt"][:,:]
-    th_upd_srs = les_data_srs["updraft_thetali"][:,:]
-    qt_var_upd_srs = les_data_srs["upd_QTvar"][:,:]
-    th_var_upd_srs = les_data_srs["upd_Hvar"][:,:]
-    cov_upd_srs = les_data_srs["upd_HQTcov"][:,:]
-
-    avg_step = 25
-    tmp = np.array(scm_data_avg["ql_mean"])[-1]
-
-    qt_env = np.zeros_like(tmp)
-    th_env = np.zeros_like(tmp)
-    qt_upd = np.zeros_like(tmp)
-    th_upd = np.zeros_like(tmp)
-    qt_var_env = np.zeros_like(tmp)
-    th_var_env = np.zeros_like(tmp)
-    qt_var_upd = np.zeros_like(tmp)
-    th_var_upd = np.zeros_like(tmp)
-    cov_env = np.zeros_like(tmp)
-    cov_upd = np.zeros_like(tmp)
-
-    tmp_upd_cnt = np.zeros_like(tmp)
-    tmp_env_cnt = np.zeros_like(tmp)
+    les_srs_dict["upd_area"] =  np.array(les_data_srs["updraft_fraction"])[:,:]
+    les_srs_dict["env_area"] = 1. - les_srs_dict["upd_area"]
+    for var in all_var:
+        les_srs_dict[var] = np.array(les_data_srs[var][:,:])
+        les_avg_dict[var] = np.zeros_like(height)
+    for var in ["upd_cnt", "env_cnt"]:
+        les_avg_dict[var] = np.zeros_like(height)
 
     for it in range(-1, -1*(avg_step +1 ), -1):
-        for iz in range(tmp.shape[0]):
-            if env_area[iz, it] > 0:
-                qt_env[iz]  += qt_env_srs[iz,it]
-                th_env[iz]  += th_env_srs[iz,it]
-                qt_var_env[iz] += qt_var_env_srs[iz,it]
-                th_var_env[iz] += th_var_env_srs[iz,it]
-                cov_env[iz] += cov_env_srs[iz,it]
-                tmp_env_cnt[iz] += 1
+        for iz in range(height.shape[0]):
+            if les_srs_dict["env_area"][iz, it] > 0:
+                les_avg_dict["env_cnt"][iz] += 1
+                for var in env_var:
+                    les_avg_dict[var][iz] += les_srs_dict[var][iz,it]
 
-            if upd_area[iz, it] > 0:
-                qt_upd[iz]  += qt_upd_srs[iz,it]
-                th_upd[iz]  += th_upd_srs[iz,it]
-                qt_var_upd[iz] += qt_var_upd_srs[iz,it]
-                th_var_upd[iz] += th_var_upd_srs[iz,it]
-                cov_upd[iz] += cov_upd_srs[iz,it]
-                tmp_upd_cnt[iz] += 1
+            if les_srs_dict["upd_area"][iz, it] > 0:
+                les_avg_dict["upd_cnt"][iz] += 1
+                for var in upd_var:
+                    les_avg_dict[var][iz] += les_srs_dict[var][iz,it]
 
-    for arr in [qt_env, th_env, qt_var_env, th_var_env, cov_env]:
-        for iz in range(arr.shape[0]):
-            if tmp_env_cnt[iz] > 0:
-                arr[iz] /= tmp_env_cnt[iz]
+    for var in env_var:
+        for iz in range(height.shape[0]):
+            if les_avg_dict["env_cnt"][iz] > 0:
+                les_avg_dict[var][iz] /= les_avg_dict["env_cnt"][iz]
             else:
-                arr[iz] = np.NaN
+                les_avg_dict[var][iz] = np.NaN
 
-    for arr in [qt_upd, th_upd, qt_var_upd, th_var_upd, cov_upd]:
-        for iz in range(arr.shape[0]):
-            if tmp_upd_cnt[iz] > 0:
-                arr[iz] /= tmp_upd_cnt[iz]
+    for var in upd_var:
+        for iz in range(height.shape[0]):
+            if les_avg_dict["upd_cnt"][iz] > 0:
+                les_avg_dict[var][iz] /= les_avg_dict["upd_cnt"][iz]
             else:
-                arr[iz] = np.NaN
+                les_avg_dict[var][iz] = np.NaN
 
-    qt_05 = np.zeros_like(tmp)
-    qt_45 = np.zeros_like(tmp)
-    qt_55 = np.zeros_like(tmp)
-    qt_95 = np.zeros_like(tmp)
-
-    th_05 = np.zeros_like(tmp)
-    th_45 = np.zeros_like(tmp)
-    th_55 = np.zeros_like(tmp)
-    th_95 = np.zeros_like(tmp)
-
-    qt_u_05 = np.zeros_like(tmp)
-    qt_u_45 = np.zeros_like(tmp)
-    qt_u_55 = np.zeros_like(tmp)
-    qt_u_95 = np.zeros_like(tmp)
-
-    th_u_05 = np.zeros_like(tmp)
-    th_u_45 = np.zeros_like(tmp)
-    th_u_55 = np.zeros_like(tmp)
-    th_u_95 = np.zeros_like(tmp)
+    # dictionaries to store percentiles
+    upd_qt_perc = {}
+    upd_th_perc = {}
+    env_qt_perc = {}
+    env_th_perc = {}
+    for perc_dict in [upd_qt_perc, upd_th_perc, env_qt_perc, env_th_perc]:
+        for perc in ["5", "45", "55", "95"]:
+            perc_dict[perc] = np.zeros_like(height)
 
     # calculate percentiles
-    for iz in range(tmp.shape[0]):
-        qt_val = np.random.normal(qt_env[iz], qt_var_env[iz], 10000)
-        qt_05[iz] = np.percentile(qt_val, 5)
-        qt_45[iz] = np.percentile(qt_val, 45)
-        qt_55[iz] = np.percentile(qt_val, 55)
-        qt_95[iz] = np.percentile(qt_val, 95)
+    for iz in range(height.shape[0]):
+        # environment
+        if les_avg_dict["env_QTvar"][iz] < 0:
+            les_avg_dict["env_QTvar"][iz] = 0.
+        qt_val = np.random.normal(les_avg_dict["env_qt"][iz], les_avg_dict["env_QTvar"][iz], 10000)
+        if les_avg_dict["env_Hvar"][iz] < 0:
+            les_avg_dict["env_Hvar"][iz] = 0.
+        th_val = np.random.normal(les_avg_dict["env_thetali"][iz], les_avg_dict["env_Hvar"][iz], 10000)
+        for perc in [5, 45, 55, 95]:
+            env_qt_perc[str(perc)][iz] = np.percentile(qt_val, perc)
+            env_th_perc[str(perc)][iz] = np.percentile(th_val, perc)
+        # updraft
+        qt_val = np.random.normal(les_avg_dict["updraft_qt"][iz], les_avg_dict["upd_QTvar"][iz], 10000)
+        if les_avg_dict["upd_Hvar"][iz] < 0:
+            les_avg_dict["upd_Hvar"][iz] = 0.
+        th_val = np.random.normal(les_avg_dict["updraft_thetali"][iz], les_avg_dict["upd_Hvar"][iz], 10000)
+        for perc in [5, 45, 55, 95]:
+            upd_qt_perc[str(perc)][iz] = np.percentile(qt_val, perc)
+            upd_th_perc[str(perc)][iz] = np.percentile(th_val, perc)
 
-        if th_var_env[iz] < 0:
-            th_var_env[iz] = 0.
-        th_val = np.random.normal(th_env[iz], th_var_env[iz], 10000)
-        th_05[iz] = np.percentile(th_val, 5)
-        th_45[iz] = np.percentile(th_val, 45)
-        th_55[iz] = np.percentile(th_val, 55)
-        th_95[iz] = np.percentile(th_val, 95)
-
-    # calculate percentiles
-    for iz in range(tmp.shape[0]):
-        qt_u_val = np.random.normal(qt_upd[iz], qt_var_upd[iz], 10000)
-        qt_u_05[iz] = np.percentile(qt_u_val, 5)
-        qt_u_45[iz] = np.percentile(qt_u_val, 45)
-        qt_u_55[iz] = np.percentile(qt_u_val, 55)
-        qt_u_95[iz] = np.percentile(qt_u_val, 95)
-
-        th_u_val = np.random.normal(th_upd[iz], th_var_upd[iz], 10000)
-        th_u_05[iz] = np.percentile(th_u_val, 5)
-        th_u_45[iz] = np.percentile(th_u_val, 45)
-        th_u_55[iz] = np.percentile(th_u_val, 55)
-        th_u_95[iz] = np.percentile(th_u_val, 95)
-
-
-    focus_z = [12, 27, 42, 62,  75, 90]
-
-    # iteration over plots
-    # customize defaults
+    # (1) plot profiles with percentiles
     fig = plt.figure(1)
     fig.set_figheight(10)
     fig.set_figwidth(12)
@@ -710,38 +696,36 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
                                #(rows, columns, number)
         plots[plot_it].set_xlabel(x_lab[plot_it])
         plots[plot_it].set_ylabel('z [m]')
-        plots[plot_it].set_ylim([0, 2000])
+        plots[plot_it].set_ylim(y_range)
         plots[plot_it].grid(True)
         for iz in focus_z:
-            plots[plot_it].axhline(scm_data_avg["z_half"][iz], c="peachpuff", lw=2)
+            plots[plot_it].axhline(height[iz], c="peachpuff", lw=2)
 
-    plots[0].fill_betweenx(scm_data_avg["z_half"], qt_05, qt_95, color="deepskyblue")
-    plots[1].fill_betweenx(scm_data_avg["z_half"], th_05, th_95, color="deepskyblue")
-    plots[3].fill_betweenx(scm_data_avg["z_half"], qt_u_05, qt_u_95, color="deepskyblue")
-    plots[4].fill_betweenx(scm_data_avg["z_half"], th_u_05, th_u_95, color="deepskyblue")
+    plots[0].fill_betweenx(height, env_qt_perc["5"], env_qt_perc["95"], color="deepskyblue")
+    plots[1].fill_betweenx(height, env_th_perc["5"], env_th_perc["95"], color="deepskyblue")
+    plots[3].fill_betweenx(height, upd_qt_perc["5"], upd_qt_perc["95"], color="deepskyblue")
+    plots[4].fill_betweenx(height, upd_th_perc["5"], upd_th_perc["95"], color="deepskyblue")
 
-    plots[0].plot(qt_env,  scm_data_avg["z_half"], ".-", color="blue")
-    plots[1].plot(th_env,  scm_data_avg["z_half"], ".-", color="blue")
-    plots[2].plot(cov_env, scm_data_avg["z_half"], ".-", color="blue")
+    plots[0].plot(les_avg_dict["env_qt"],          height, ".-", color="blue")
+    plots[1].plot(les_avg_dict["env_thetali"],     height, ".-", color="blue")
+    plots[2].plot(les_avg_dict["env_HQTcov"],      height, ".-", color="blue")
+    plots[3].plot(les_avg_dict["updraft_qt"],      height, ".-", color="blue")
+    plots[4].plot(les_avg_dict["updraft_thetali"], height, ".-", color="blue")
+    plots[5].plot(les_avg_dict["upd_HQTcov"],      height, ".-", color="blue")
 
-    plots[3].plot(qt_upd,  scm_data_avg["z_half"], ".-", color="blue")
-    plots[4].plot(th_upd,  scm_data_avg["z_half"], ".-", color="blue")
-    plots[5].plot(cov_upd, scm_data_avg["z_half"], ".-", color="blue")
-
-    plots[0].set_xlim([5, 18])
-    plots[3].set_xlim([5, 18])
-    plots[1].set_xlim([298, 308])
-    plots[4].set_xlim([298, 308])
-    plots[2].set_xlim([-0.6, 0.01])
-    plots[5].set_xlim([-0.6, 0.01])
+    for it in [0,3]:
+        plots[it].set_xlim(qt_range)
+    for it in [1,4]:
+        plots[it].set_xlim(th_range)
+    for it in [2,5]:
+        plots[it].set_xlim(cov_range)
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.suptitle("Bomex")
+    plt.suptitle(suptitle)
     plt.savefig(folder + title)
     plt.clf()
 
-    # iteration over plots
-    # customize defaults
+    # (2) plot qt percentile spread
     fig = plt.figure(1)
     fig.set_figheight(10)
     fig.set_figwidth(12)
@@ -753,42 +737,40 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
         plots.append(plt.subplot(2,2,plot_it+1))
                                #(rows, columns, number)
         plots[plot_it].set_ylabel('z [m]')
-        plots[plot_it].set_ylim([0, 2000])
+        plots[plot_it].set_ylim(y_range)
         plots[plot_it].grid(True)
         for iz in focus_z:
-            plots[plot_it].axhline(scm_data_avg["z_half"][iz], c="peachpuff", lw=2)
+            plots[plot_it].axhline(height[iz], c="peachpuff", lw=2)
 
+    plots[0].plot(les_avg_dict["env_qt"],     height, ".-", color="blue",      label="env")
+    plots[0].plot(les_avg_dict["updraft_qt"], height, ".-", color="lightblue", label="upd")
 
-    plots[0].plot(qt_env,  scm_data_avg["z_half"], ".-", color="blue", label="env")
-    plots[0].plot(qt_upd,  scm_data_avg["z_half"], ".-", color="lightblue", label="upd")
+    plots[1].fill_betweenx(height, (env_qt_perc["5"]/les_avg_dict["env_qt"]  * 100 - 100), (env_qt_perc["95"]/les_avg_dict["env_qt"] * 100 - 100), color="deepskyblue")
+    plots[1].fill_betweenx(height, (env_qt_perc["45"]/les_avg_dict["env_qt"] * 100 - 100), (env_qt_perc["55"]/les_avg_dict["env_qt"] * 100 - 100), color="blue")
 
-    plots[1].fill_betweenx(scm_data_avg["z_half"], (qt_05/qt_env * 100 - 100), (qt_95/qt_env * 100 - 100), color="deepskyblue")
-    plots[1].fill_betweenx(scm_data_avg["z_half"], (qt_45/qt_env * 100 - 100), (qt_55/qt_env * 100 - 100), color="blue")
+    plots[2].plot(les_avg_dict["env_qt"],     height, ".-", color="lightblue", label="env")
+    plots[2].plot(les_avg_dict["updraft_qt"], height, ".-", color="blue",      label="upd")
 
-    plots[2].plot(qt_env,  scm_data_avg["z_half"], ".-", color="lightblue", label="env")
-    plots[2].plot(qt_upd,  scm_data_avg["z_half"], ".-", color="blue", label="upd")
+    plots[3].fill_betweenx(height, (upd_qt_perc["5"]/les_avg_dict["updraft_qt"]  * 100 - 100), (upd_qt_perc["95"]/les_avg_dict["updraft_qt"] * 100 - 100), color="deepskyblue")
+    plots[3].fill_betweenx(height, (upd_qt_perc["45"]/les_avg_dict["updraft_qt"] * 100 - 100), (upd_qt_perc["55"]/les_avg_dict["updraft_qt"] * 100 - 100), color="blue")
 
-    plots[3].fill_betweenx(scm_data_avg["z_half"], (qt_u_05/qt_upd * 100 - 100), (qt_u_95/qt_upd * 100 - 100), color="deepskyblue")
-    plots[3].fill_betweenx(scm_data_avg["z_half"], (qt_u_45/qt_upd * 100 - 100), (qt_u_55/qt_upd * 100 - 100), color="blue")
+    for it in [0,2]:
+        plots[it].legend()
+        plots[it].set_xlabel('QT [g/kg]')
+        plots[it].set_xlim(qt_range)
+    for it in [1,3]:
+        plots[it].set_xlim(qt_spread_range)
 
-    plots[0].legend()
-    plots[2].legend()
-    plots[0].set_xlabel('QT [g/kg]')
-    plots[2].set_xlabel('QT [g/kg]')
     plots[1].set_xlabel('QT spread around env mean [%]')
     plots[3].set_xlabel('QT spread around upd mean [%]')
 
-    plots[1].set_xlim([-10, 10])
-    plots[3].set_xlim([-10, 10])
-
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.suptitle("Bomex")
+    plt.suptitle(suptitle)
     tmp_title = folder+title
     plt.savefig(tmp_title[0:-3] + "_spread_qt.pdf")
     plt.clf()
 
-    # iteration over plots
-    # customize defaults
+    # (3) plot th percentile spread
     fig = plt.figure(1)
     fig.set_figheight(10)
     fig.set_figwidth(12)
@@ -800,64 +782,62 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
         plots.append(plt.subplot(2,2,plot_it+1))
                                #(rows, columns, number)
         plots[plot_it].set_ylabel('z [m]')
-        plots[plot_it].set_ylim([0, 2000])
+        plots[plot_it].set_ylim(y_range)
         plots[plot_it].grid(True)
         for iz in focus_z:
-            plots[plot_it].axhline(scm_data_avg["z_half"][iz], c="peachpuff", lw=2)
+            plots[plot_it].axhline(height[iz], c="peachpuff", lw=2)
 
-    plots[0].plot(th_env,  scm_data_avg["z_half"], ".-", color="blue", label="env")
-    plots[0].plot(th_upd,  scm_data_avg["z_half"], ".-", color="lightblue", label="upd")
+    plots[0].plot(les_avg_dict["env_thetali"],     height, ".-", color="blue",      label="env")
+    plots[0].plot(les_avg_dict["updraft_thetali"], height, ".-", color="lightblue", label="upd")
 
-    plots[1].fill_betweenx(scm_data_avg["z_half"], (th_05/th_env * 100 - 100), (th_95/th_env * 100 - 100), color="deepskyblue")
-    plots[1].fill_betweenx(scm_data_avg["z_half"], (th_45/th_env * 100 - 100), (th_55/th_env * 100 - 100), color="blue")
+    plots[1].fill_betweenx(height, (env_th_perc["5"]/les_avg_dict["env_thetali"]  * 100 - 100), (env_th_perc["95"]/les_avg_dict["env_thetali"] * 100 - 100), color="deepskyblue")
+    plots[1].fill_betweenx(height, (env_th_perc["45"]/les_avg_dict["env_thetali"] * 100 - 100), (env_th_perc["55"]/les_avg_dict["env_thetali"] * 100 - 100), color="blue")
 
-    plots[2].plot(th_env,  scm_data_avg["z_half"], ".-", color="lightblue", label="env")
-    plots[2].plot(th_upd,  scm_data_avg["z_half"], ".-", color="blue", label="upd")
+    plots[2].plot(les_avg_dict["env_thetali"],     height, ".-", color="lightblue", label="env")
+    plots[2].plot(les_avg_dict["updraft_thetali"], height, ".-", color="blue",      label="upd")
 
-    plots[3].fill_betweenx(scm_data_avg["z_half"], (th_u_05/th_upd * 100 - 100), (th_u_95/th_upd * 100 - 100), color="deepskyblue")
-    plots[3].fill_betweenx(scm_data_avg["z_half"], (th_u_45/th_upd * 100 - 100), (th_u_55/th_upd * 100 - 100), color="blue")
+    plots[3].fill_betweenx(height, (upd_th_perc["5"]/les_avg_dict["updraft_thetali"]  * 100 - 100), (upd_th_perc["95"]/les_avg_dict["updraft_thetali"] * 100 - 100), color="deepskyblue")
+    plots[3].fill_betweenx(height, (upd_th_perc["45"]/les_avg_dict["updraft_thetali"] * 100 - 100), (upd_th_perc["55"]/les_avg_dict["updraft_thetali"] * 100 - 100), color="blue")
 
-    plots[0].legend()
-    plots[2].legend()
-    plots[0].set_xlabel('TH [K]')
-    plots[2].set_xlabel('TH [K]')
+    for it in [0,2]:
+        plots[it].legend()
+        plots[it].set_xlabel('TH [K]')
+        plots[it].set_xlim(th_range)
+    for it in [1,3]:
+        plots[it].set_xlim(th_spread_range)
+
     plots[1].set_xlabel('TH spread around env mean [%]')
     plots[3].set_xlabel('TH spread around upd mean [%]')
 
-    plots[0].set_xlim([298, 308])
-    plots[2].set_xlim([298, 308])
-
-    plots[1].set_xlim([-.25, .25])
-    plots[3].set_xlim([-.25, .25])
-
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.suptitle("Bomex")
+    plt.suptitle(suptitle)
     tmp_title = folder+title
     plt.savefig(tmp_title[0:-3] + "_spread_th.pdf")
     plt.clf()
 
-    # 2D distributions
+    # (4) plot 2D distributions of updrafts
     fig = plt.figure(1)
     fig.set_figheight(10)
     fig.set_figwidth(12)
     mpl.rcParams.update({'font.size': 12})
     mpl.rc('lines', linewidth=3, markersize=6)
 
-    dummy_qt = np.arange(11,18,.1)
-    dummy_th = np.arange(298.5, 302.5, .1)
+    upd_dummy_qt = np.linspace(upd_dummy_qt_range[0], upd_dummy_qt_range[1], 1e3)
+    upd_dummy_th = np.linspace(upd_dummy_th_range[0], upd_dummy_th_range[1], 1e3)
+
     plots = []
     for plot_it in range(6):
         plots.append(plt.subplot(3,2,plot_it+1))
                                #(rows, columns, number)
-        plots[plot_it].set_title("z = " + str(scm_data_avg["z_half"][focus_z[plot_it]]) + " [m]")
+        plots[plot_it].set_title("z = " + str(height[focus_z[plot_it]]) + " [m]")
         plots[plot_it].set_xlabel("QT [g/kg]")
         plots[plot_it].set_ylabel("TH [K]")
 
         iz = focus_z[plot_it]
         upd_2d_values = np.vstack([\
             np.random.multivariate_normal(\
-                [qt_upd[iz], th_upd[iz]],\
-                [[qt_var_upd[iz], cov_upd[iz]], [cov_upd[iz], th_var_upd[iz]]],\
+                [les_avg_dict["updraft_qt"][iz], les_avg_dict["updraft_thetali"][iz]],\
+                [[les_avg_dict["upd_QTvar"][iz], les_avg_dict["upd_HQTcov"][iz]], [les_avg_dict["upd_HQTcov"][iz], les_avg_dict["upd_Hvar"][iz]]],\
                 [100000]\
             )\
         ])
@@ -865,51 +845,52 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
         hst = plots[plot_it].hist2d(\
                   upd_2d_values[:,0],\
                   upd_2d_values[:,1],\
-                  bins=100,\
-                  range = [[11,18], [298.5, 302.5]],\
+                  bins=n_bins,\
+                  range = [upd_dummy_qt_range, upd_dummy_th_range],\
                   cmap=cm.Blues,\
                   norm=LogNorm())
         plt.colorbar(hst[3], ax=plots[plot_it])
 
-        dummy_T  = dummy_th * wrp.exner_c(scm_data_avg["p0_half"][focus_z[plot_it]])
-        dummy_qt_star = np.zeros_like(dummy_T)
-        for el_it in range(dummy_T.shape[0]):
-            dummy_pv_star = wrp.pv_star(dummy_T[el_it])
-            dummy_qt_star[el_it] = wrp.qv_star_c(scm_data_avg["p0_half"][focus_z[plot_it]], dummy_qt[el_it] * 1e-3, dummy_pv_star) * 1e3
+        upd_dummy_T       = upd_dummy_th * wrp.exner_c(scm_data_avg["p0_half"][focus_z[plot_it]])
+        upd_dummy_qt_star = np.zeros_like(upd_dummy_T)
+        for el_it in range(upd_dummy_T.shape[0]):
+            upd_dummy_pv_star        = wrp.pv_star(upd_dummy_T[el_it])
+            upd_dummy_qt_star[el_it] = wrp.qv_star_c(scm_data_avg["p0_half"][focus_z[plot_it]], upd_dummy_qt[el_it] * 1e-3, upd_dummy_pv_star) * 1e3
 
-        plots[plot_it].plot(dummy_qt_star, dummy_th, '-', lw=1, c='red')
+        plots[plot_it].plot(upd_dummy_qt_star, upd_dummy_th, '-', lw=1, c='red')
 
-        plots[plot_it].axhline(th_upd[iz], c="lightgray", lw=1)
-        plots[plot_it].axvline(qt_upd[iz], c="lightgray", lw=1)
+        plots[plot_it].axhline(les_avg_dict["updraft_thetali"][iz], c="lightgray", lw=1)
+        plots[plot_it].axvline(les_avg_dict["updraft_qt"][iz],      c="lightgray", lw=1)
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.suptitle("Bomex - 2D updraft histograms")
+    plt.suptitle(suptitle + " - 2D updraft histograms")
     tmp_title = folder+title
     plt.savefig(tmp_title[0:-3] + "_2d_hist_upd.pdf")
     plt.clf()
 
-    # 2D distributions
+    # (5) plot 2D distributions of environment
     fig = plt.figure(1)
     fig.set_figheight(10)
     fig.set_figwidth(12)
     mpl.rcParams.update({'font.size': 12})
     mpl.rc('lines', linewidth=3, markersize=6)
 
-    dummy_qt = np.arange(4,18,.1)
-    dummy_th = np.arange(298.5, 308.5, .1)
+    env_dummy_qt = np.linspace(env_dummy_qt_range[0], env_dummy_qt_range[1], 1e3)
+    env_dummy_th = np.linspace(env_dummy_th_range[0], env_dummy_th_range[1], 1e3)
+
     plots = []
     for plot_it in range(6):
         plots.append(plt.subplot(3,2,plot_it+1))
                                #(rows, columns, number)
-        plots[plot_it].set_title("z = " + str(scm_data_avg["z_half"][focus_z[plot_it]]) + " [m]")
+        plots[plot_it].set_title("z = " + str(height[focus_z[plot_it]]) + " [m]")
         plots[plot_it].set_xlabel("QT [g/kg]")
         plots[plot_it].set_ylabel("TH [K]")
 
         iz = focus_z[plot_it]
         env_2d_values = np.vstack([\
             np.random.multivariate_normal(\
-                [qt_env[iz], th_env[iz]],\
-                [[qt_var_env[iz], cov_env[iz]], [cov_env[iz], th_var_env[iz]]],\
+                [les_avg_dict["env_qt"][iz], les_avg_dict["env_thetali"][iz]],\
+                [[les_avg_dict["env_QTvar"][iz], les_avg_dict["env_HQTcov"][iz]], [les_avg_dict["env_HQTcov"][iz], les_avg_dict["env_Hvar"][iz]]],\
                 [100000]\
             )\
         ])
@@ -917,25 +898,25 @@ def plot_percentiles(les_data_srs, scm_data_avg, title, folder="plots/output/"):
         hst = plots[plot_it].hist2d(\
                   env_2d_values[:,0],\
                   env_2d_values[:,1],\
-                  bins=100,\
-                  range = [[4,18], [298.5, 308.5]],\
+                  bins=n_bins,\
+                  range = [env_dummy_qt_range, env_dummy_th_range],\
                   cmap=cm.Blues,\
                   norm=LogNorm())
         plt.colorbar(hst[3], ax=plots[plot_it])
 
-        dummy_T  = dummy_th * wrp.exner_c(scm_data_avg["p0_half"][focus_z[plot_it]])
-        dummy_qt_star = np.zeros_like(dummy_T)
-        for el_it in range(dummy_T.shape[0]):
-            dummy_pv_star = wrp.pv_star(dummy_T[el_it])
-            dummy_qt_star[el_it] = wrp.qv_star_c(scm_data_avg["p0_half"][focus_z[plot_it]], dummy_qt[el_it] * 1e-3, dummy_pv_star) * 1e3
+        env_dummy_T       = env_dummy_th * wrp.exner_c(scm_data_avg["p0_half"][focus_z[plot_it]])
+        env_dummy_qt_star = np.zeros_like(env_dummy_T)
+        for el_it in range(env_dummy_T.shape[0]):
+            env_dummy_pv_star        = wrp.pv_star(env_dummy_T[el_it])
+            env_dummy_qt_star[el_it] = wrp.qv_star_c(scm_data_avg["p0_half"][focus_z[plot_it]], env_dummy_qt[el_it] * 1e-3, env_dummy_pv_star) * 1e3
 
-        plots[plot_it].plot(dummy_qt_star, dummy_th, '-', lw=1, c='red')
+        plots[plot_it].plot(env_dummy_qt_star, env_dummy_th, '-', lw=1, c='red')
 
-        plots[plot_it].axhline(th_env[iz], c="lightgray", lw=1)
-        plots[plot_it].axvline(qt_env[iz], c="lightgray", lw=1)
+        plots[plot_it].axhline(les_avg_dict["env_thetali"][iz], c="lightgray", lw=1)
+        plots[plot_it].axvline(les_avg_dict["env_qt"][iz],      c="lightgray", lw=1)
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.suptitle("Bomex - 2D environment histograms")
+    plt.suptitle(suptitle + " - 2D environment histograms")
     tmp_title = folder+title
     plt.savefig(tmp_title[0:-3] + "_2d_hist_env.pdf")
     plt.clf()

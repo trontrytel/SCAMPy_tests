@@ -51,6 +51,7 @@ def res(request):
     scampifylist = {}
     scampifylist["offline"] = True
     scampifylist["nc_file"] = '../SCAMPY_tests/plots/BOMEX_comparison/Bomex_SA_LES_data/Stats.Bomex.nc'
+    scampifylist["les_stats_freq"] = 100.
 
     # TODO - compare with prescribed scalar var simulations
     #setup['namelist']['offline']['use_prescribed_scalar_var'] = True
@@ -58,7 +59,7 @@ def res(request):
     if scampifylist["offline"]:
         # run scampy offline
         print "offline run"
-        #scampy.main_scampify(setup["namelist"], setup["paramlist"], scampifylist)
+        scampy.main_scampify(setup["namelist"], setup["paramlist"], scampifylist)
     else:
         # run scampy online
         print "online run"
@@ -80,19 +81,18 @@ def test_plot_Bomex(res):
     """
     plot Bomex profiles
     """
-    SCM_data_avg = pls.read_data_avg(res["SCM_data"], n_steps=50)
+    SCM_data_avg = pls.read_data_avg(res["SCM_data"], n_steps=30)
     SCM_data_srs = pls.read_data_srs(res["SCM_data"])
 
-    LES_data_avg = pls.read_LES_data_avg(res["LES_data"], n_steps=50)
+    LES_data_avg = pls.read_LES_data_avg(res["LES_data"], 'Bomex', n_steps=30)
     LES_data_srs = pls.read_LES_data_srs(res["LES_data"])
 
     pls.plot_mean(SCM_data_avg,   "Bomex_quicklook.pdf")
     pls.plot_drafts(SCM_data_avg, "Bomex_quicklook_drafts.pdf")
 
-    pls.plot_drafts_area_wght(SCM_data_avg, SCM_data_srs, LES_data_avg, LES_data_srs, "Bomex_quicklook_drafts_wght.pdf")
-    pls.plot_drafts_area_non_wght(SCM_data_avg, SCM_data_srs, LES_data_avg, LES_data_srs, "Bomex_quicklook_drafts_non_wght.pdf")
+    pls.plot_drafts_area_wght(SCM_data_srs, LES_data_srs, "Bomex_quicklook_drafts_wght.pdf", "Bomex", avg_step=30)
 
-    pls.plot_percentiles(LES_data_srs, SCM_data_avg, "Bomex_percentiles.pdf")
+    pls.plot_percentiles(LES_data_srs, SCM_data_avg, "Bomex_percentiles.pdf", 'Bomex')
 
 #def test_plot_timeseries_Bomex(res):
 #    """
