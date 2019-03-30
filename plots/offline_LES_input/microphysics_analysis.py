@@ -21,15 +21,16 @@ from parameters import *
 from masking import *
 
 sim_name = 'DYCOMS_RF01'
+#sim_name = 'Bomex'
+
 show_fractions = True
 n_bins = 100
 if sim_name == 'Bomex':
     path_to_data  = '../BOMEX_comparison/Bomex_SA_LES_data/'
     LES_data_file = path_to_data + 'fields/1021600.nc'
-    namelist_file = path_to_data + 'Bomex.in'
     refrence_file = path_to_data + 'Stats.Bomex.nc'
     # height indices from which I plot 2D histograms
-    focus_levels  = [12, 27, 42, 62,  75, 90]
+    focus_levels  = [12, 27, 42, 62,  75, 85]
     y_range = [0, 2000]
     # th and qt limits for percentile plots
     th_range  = [298, 308]
@@ -43,10 +44,11 @@ if sim_name == 'Bomex':
     env_qt_range = qt_range
     env_th_range = th_range
 
+    z_half_flag = True
+
 elif sim_name == 'DYCOMS_RF01':
     path_to_data  = '../DYCOMS_comparison/DYCOMS_SA_LES_data_new/'
     LES_data_file = path_to_data + 'fields/14400.nc'
-    namelist_file = path_to_data + 'DYCOMS_RF01.in'
     refrence_file = path_to_data + 'Stats.DYCOMS_RF01.nc'
     # height indices from which I plot 2D histograms
     focus_levels  = [120, 130, 140, 150, 160, 170]
@@ -63,110 +65,89 @@ elif sim_name == 'DYCOMS_RF01':
     upd_qt_range = qt_range
     upd_th_range = th_range
 
+    z_half_flag = False
+
 elif sim_name == 'RICO':
     file_folder   = '/export/data1/ajaruga/data/RICO/e9a09/'
     ncdf_folder   = file_folder + 'fields/'
     time          = '19800'
     tmp_file      = ncdf_folder + time + '.nc'
-    namelist_file = file_folder + 'Rico.in'
 
 else:
     print "unrecognised simulation name"
     assert(False)
 
-print "reading data from file: ",          LES_data_file
-print "reading initial parameters from: ", namelist_file
-print "reading reference profiles from: ", refrence_file
 # open LES netcdf files
 # (The LES output doesnt have all the reference profiles that I need.
 #  I'm taking them from SCAMPy otput files.
 #  This only works if my vertical resolution is the same in LES and SCM)
+print "reading data from file: ",          LES_data_file
+print "reading reference profiles from: ", refrence_file
 root     = nc.Dataset(LES_data_file, 'r')
 ref_root = nc.Dataset(refrence_file, 'r')
-# Get the values of grid properties
-nml = simplejson.loads(open(namelist_file).read())
-dx = nml['grid']['dx']
-dy = nml['grid']['dy']
-dz = nml['grid']['dz']
-nx = nml['grid']['nx']
-ny = nml['grid']['ny']
-nz = nml['grid']['nz']
-z_half = np.arange(dz * 0.5, dz * nz, dz)
-myones = np.ones((nx*ny,nz))
 
-# get the masks associated with each condition (Coleenn tracer analysis)
-sc = root.groups['fields'].variables['c_srf_15'][:, :, :]
-sc_mask, sc_2d = get_tracer_mask(sc, 1.0)
-del sc, sc_2d
-w = root.groups['fields'].variables['w'][:, :, :]
-w_mask, w_2d = get_w_mask(w, 0.0) # w_2d is interpolated to cell centers
-del w
-ql = root.groups['fields'].variables['ql'][:, :, :]
-ql_mask = get_ql_mask(ql, 1e-20, True, z_half)
-del ql
+ql     = root.groups['fields'].variables['ql'][:, :, :]
+w      = root.groups['fields'].variables['w'][:, :, :]
+tracer = root.groups['fields'].variables['c_srf_15'][:,:,:]
+th     = root.groups['fields'].variables['thetali'][:, :, :]
+qt     = root.groups['fields'].variables['qt'][:, :, :]
 
-# get a conventional cloud fraction mask
-ql = root.groups['fields'].variables['ql'][:, :, :]
-cloud_mask = get_ql_mask(ql, 1e-20, False, z_half)
-del ql
+dims = qt.shape
+nx = dims[0]
+ny = dims[1]
+nz = dims[2]
 
-# combine the masks from Coleens tracer analysis
-# need to use logical_or to enforce all of the conditions
-udr_mask = np.logical_or(np.logical_or(sc_mask, w_mask), ql_mask)
-env_mask = np.logical_not(udr_mask)
-
-# sanity check
-#cloud_frac = np.ma.array(myones, mask=cloud_mask).sum(axis=0)/(nx*ny) <-- defined above
-area_frac  = np.ma.array(myones, mask=sc_mask).sum(axis=0)/(nx*ny)
-wpos_frac  = np.ma.array(myones, mask=w_mask).sum(axis=0)/(nx*ny)
-cloud_frac = np.ma.array(myones, mask=cloud_mask).sum(axis=0)/(nx*ny)
-udr_frac   = np.ma.array(myones, mask=udr_mask).sum(axis=0)/(nx*ny)
-env_frac   = np.ma.array(myones, mask=env_mask).sum(axis=0)/(nx*ny)
-
-# find the cloud layer
-idx_cloudy = np.where(cloud_frac >= 1e-6)
-CB_height  = z_half[idx_cloudy][0]
-CT_height  = z_half[idx_cloudy][-1]
-CB_idx     = idx_cloudy[0][0]
-CT_idx     = idx_cloudy[0][-1]
-
-# sanity checks and plots
-print "cloud base = ", CB_height, " [m]"
-print "cloud top  = ", CT_height, " [m]"
-if show_fractions == True:
-    plt.figure()
-    plt.plot(cloud_frac, z_half, '-b', label='cloud')
-    plt.plot(area_frac,  z_half, '-r', label='scalar > sd')
-    plt.plot(wpos_frac,  z_half, '-g', label='w>0')
-    plt.plot(udr_frac,   z_half, '-c', label='updraft')
-    plt.plot(env_frac,   z_half, '-k', label='environment')
-    plt.axhline(y=CB_height, color='m', linestyle='-', label = 'cloudy layer')
-    plt.axhline(y=CT_height, color='m', linestyle='-')
-    plt.legend(loc='upper right')
-    plt.title(sim_name)
-    plt.grid(True)
-    #plt.ylim([0, 2500])
-    plt.ylabel('Height, m')
-    plt.xlabel('Area fractions')
-    plt.savefig(sim_name + "_fractions.pdf")
-
-# make histograms of the environment and updraft values
-#p0_half = ref_root.groups['reference'].variables['p0_half'][:]
-p0_half = ref_root.groups['reference'].variables['p0'][:]
-
+if z_half_flag:
+   z_half = ref_root.groups['reference'].variables['z_half'][:]
+   p0_half = ref_root.groups['reference'].variables['p0_half'][:]
+else:
+   p0_half = ref_root.groups['reference'].variables['p0'][:]
+   z_half = ref_root.groups['reference'].variables['z'][:]
 height  = z_half[0 : -1]
-var_th  = root.groups['fields'].variables['thetali'][:, :, :].reshape(nx*ny,nz)
-var_qt  = root.groups['fields'].variables['qt'][:, :, :].reshape(nx*ny,nz)
-#var_th = var_th.reshape(nx*ny,nz)
-#var_qt = var_qt.reshape(nx*ny,nz)
+
+# reshape variables
+ql_2d       = reshape_var(ql)
+w_2d        = reshape_var(w)
+tracer_2d   = reshape_var(tracer)
+th_2d       = reshape_var(th)
+qt_2d       = reshape_var(qt)
+# get cloud layer
+cb, ct      = calculate_cloud_base_top(ql_2d)
+# interpolate vertical velocity
+w_interp_2d = interpolate_w(w_2d)
+#calculate masks
+updraft_mask, env_mask = updraft_env_mask(tracer_2d, w_interp_2d, ql_2d, cb, ct, z_half)
+#cleanup
+del ql_2d
+del w_2d
+del tracer_2d
+del qt
+del th
+
+print "cloud base = ", z_half[cb], " [m]"
+print "cloud top  = ", z_half[ct], " [m]"
+env_frac_prof = updraft_mask.sum(axis=0) / updraft_mask.shape[0]
+upd_frac_prof = env_mask.sum(axis=0) / env_mask.shape[0]
+
+plt.figure()
+plt.plot(upd_frac_prof, z_half, '-', c="blue", label='updraft')
+plt.plot(env_frac_prof, z_half, '-', c="red",  label='environment')
+plt.axhline(y=z_half[cb], color='lightblue', linestyle='-', label = 'ql layer')
+plt.axhline(y=z_half[ct], color='lightblue', linestyle='-')
+plt.legend(loc='upper right')
+plt.title(sim_name)
+plt.grid(True)
+plt.ylabel('height, m')
+plt.xlabel('area fractions')
+plt.savefig(sim_name + "_fractions.pdf")
 
 keys_list = ["th_env", "th_upd", "qt_env", "qt_upd"]
 # create dictionary for storing the updraft and environment masks for theta and qt
 var_dict = {}
-var_dict["th_env"] = np.ma.array(var_th, mask=env_mask)
-var_dict["th_upd"] = np.ma.array(var_th, mask=udr_mask)
-var_dict["qt_env"] = np.ma.array(var_qt, mask=env_mask)
-var_dict["qt_upd"] = np.ma.array(var_qt, mask=udr_mask)
+var_dict["th_env"] = np.ma.array(th_2d, mask=env_mask)
+var_dict["th_upd"] = np.ma.array(th_2d, mask=updraft_mask)
+var_dict["qt_env"] = np.ma.array(qt_2d, mask=env_mask)
+var_dict["qt_upd"] = np.ma.array(qt_2d, mask=updraft_mask)
 
 # create dictionaries for storing updraft and environment percentiles and mean profiles
 mean_dict = {}
@@ -315,8 +296,8 @@ for plot_it in range(6):
     iz = focus_levels[plot_it]
 
     hst = plots[plot_it].hist2d(\
-              var_dict["qt_env"][:, iz] * 1e3,\
-              var_dict["th_env"][:, iz],\
+              var_dict["qt_env"][:, iz].compressed() * 1e3,\
+              var_dict["th_env"][:, iz].compressed(),\
               bins=n_bins,\
               range = [env_qt_range, env_th_range],\
               cmap=cm.Blues,\
@@ -357,8 +338,8 @@ for plot_it in range(6):
     iz = focus_levels[plot_it]
 
     hst = plots[plot_it].hist2d(\
-              var_dict["qt_upd"][:, iz] * 1e3,\
-              var_dict["th_upd"][:, iz],\
+              var_dict["qt_upd"][:, iz].compressed() * 1e3,\
+              var_dict["th_upd"][:, iz].compressed(),\
               bins=n_bins,\
               range = [upd_qt_range, upd_th_range],\
               cmap=cm.Blues,\
@@ -379,4 +360,88 @@ for plot_it in range(6):
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.suptitle(sim_name + " - 2D updraft histograms")
 plt.savefig( sim_name + "_full_LES_2d_hist_upd.pdf")
+plt.clf()
+
+# 2D surface plots
+fig = plt.figure(1)
+fig.set_figheight(10)
+fig.set_figwidth(12)
+mpl.rcParams.update({'font.size': 12})
+mpl.rc('lines', linewidth=3, markersize=6)
+plots = []
+for plot_it in range(6):
+    plots.append(plt.subplot(3,2,plot_it+1))
+                           #(rows, columns, number)
+    plots[plot_it].set_title("z = " + str(z_half[focus_levels[plot_it]]) + " [m]")
+
+    iz = focus_levels[plot_it]
+
+    tmp = var_dict["qt_upd"][:, iz].reshape(nx, ny)
+    tmp_plot = plots[plot_it].imshow(tmp * 1e3, vmin=upd_qt_range[0], vmax=upd_qt_range[1])
+    plt.colorbar(tmp_plot, ax=plots[plot_it])
+
+plt.savefig( sim_name + "_qt_upd_2D_surfaces.pdf")
+plt.clf()
+
+
+fig = plt.figure(1)
+fig.set_figheight(10)
+fig.set_figwidth(12)
+mpl.rcParams.update({'font.size': 12})
+mpl.rc('lines', linewidth=3, markersize=6)
+plots = []
+for plot_it in range(6):
+    plots.append(plt.subplot(3,2,plot_it+1))
+                           #(rows, columns, number)
+    plots[plot_it].set_title("z = " + str(z_half[focus_levels[plot_it]]) + " [m]")
+
+    iz = focus_levels[plot_it]
+
+    tmp = var_dict["qt_env"][:, iz].reshape(nx, ny)
+    tmp_plot = plots[plot_it].imshow(tmp * 1e3, vmin=env_qt_range[0], vmax=env_qt_range[1])
+    plt.colorbar(tmp_plot, ax=plots[plot_it])
+
+plt.savefig( sim_name + "_qt_env_2D_surfaces.pdf")
+plt.clf()
+
+
+fig = plt.figure(1)
+fig.set_figheight(10)
+fig.set_figwidth(12)
+mpl.rcParams.update({'font.size': 12})
+mpl.rc('lines', linewidth=3, markersize=6)
+plots = []
+for plot_it in range(6):
+    plots.append(plt.subplot(3,2,plot_it+1))
+                           #(rows, columns, number)
+    plots[plot_it].set_title("z = " + str(z_half[focus_levels[plot_it]]) + " [m]")
+
+    iz = focus_levels[plot_it]
+
+    tmp = var_dict["th_upd"][:, iz].reshape(nx, ny)
+    tmp_plot = plots[plot_it].imshow(tmp, vmin=upd_th_range[0], vmax=upd_th_range[1])
+    plt.colorbar(tmp_plot, ax=plots[plot_it])
+
+plt.savefig( sim_name + "_th_upd_2D_surfaces.pdf")
+plt.clf()
+
+
+fig = plt.figure(1)
+fig.set_figheight(10)
+fig.set_figwidth(12)
+mpl.rcParams.update({'font.size': 12})
+mpl.rc('lines', linewidth=3, markersize=6)
+plots = []
+for plot_it in range(6):
+    plots.append(plt.subplot(3,2,plot_it+1))
+                           #(rows, columns, number)
+    plots[plot_it].set_title("z = " + str(z_half[focus_levels[plot_it]]) + " [m]")
+
+    iz = focus_levels[plot_it]
+
+    tmp = var_dict["th_env"][:, iz].reshape(nx, ny)
+    tmp_plot = plots[plot_it].imshow(tmp, vmin=env_th_range[0], vmax=env_th_range[1])
+    plt.colorbar(tmp_plot, ax=plots[plot_it])
+
+plt.savefig( sim_name + "_th_env_2D_surfaces.pdf")
 plt.clf()

@@ -1,154 +1,120 @@
+import math  as mt
 import numpy as np
-#import pylab as plt
-import pickle
 import netCDF4 as nc
-import scipy.stats as stats
+import matplotlib.pyplot as plt
 
-
-
-############################-------MASKING/STATS FUNCTIONS----------#####################################
-
-def get_tracer_mask(sc, mval):
-    dims = np.shape(sc)
-    nx = dims[0]
-    ny = dims[1]
-    nz = dims[2]
-
-    sc_2d = sc.reshape(nx * ny, nz)
-
-    sc_mean_profile = np.mean(sc_2d, axis=0)
-    sc_std_profile = np.add(np.std(sc_2d, axis=0), 1e-20)
-
-    # standardize the data
-    sc_2d = sc_2d - sc_mean_profile
-    sc_2d = sc_2d / sc_std_profile
-    # Find the mask corresponding to the scalar anomaly condition
-    updraft_masked_sc = np.ma.masked_less(sc_2d, mval)
-    sc_mask = updraft_masked_sc.mask
-    return sc_mask, sc_2d
-
-def get_buoyancy_mask(b, threshold):
-    dims = np.shape(b)
-    nx = dims[0]
-    ny = dims[1]
-    nz = dims[2]
-
-    b_2d = b.reshape(nx * ny, nz)
-
-    b_mean_profile = np.mean(b_2d, axis=0)
-
-    # anomalize the data
-    b_2d = b_2d - b_mean_profile
-
-    # Find the mask corresponding to the scalar anomaly condition
-    updraft_masked_b = np.ma.masked_less(b_2d, threshold)
-    b_mask = updraft_masked_b.mask
-    return b_mask, b_2d
-
-def get_w_mask(w, threshold):
-    # read in the vertical velocity
-    dims = np.shape(w)
-    nx = dims[0]
-    ny = dims[1]
-    nz = dims[2]
-    w_2d_raw = w.reshape(nx*ny,nz)
-    # Here we shift the vertical velocity to the thermodynamic points
-    w_2d = np.zeros((nx*ny,nz))
-    w_2d[:,0] = np.multiply(w_2d_raw[:,0],0.5)
-    for k in range(1,nz):
-        w_2d[:,k] =np.multiply(w_2d_raw[:,k-1] + w_2d_raw[:,k],0.5)
-    # Get the mask for positive vleocity
-    updraft_masked_w = np.ma.masked_less_equal(w_2d, threshold)
-    w_mask = updraft_masked_w.mask
-    return w_mask, w_2d
-
-def get_ql_mask(ql,threshold, include_dcbl, z_half):
-
-    # get the mask associated with ql >0
-    dims = np.shape(ql)
-    nx = dims[0]
-    ny = dims[1]
-    nz = dims[2]
-
-    ql_2d = ql.reshape(nx*ny,nz)
-    mean_ql = np.mean(ql_2d, axis=0)
-    ql_ind = np.argwhere(mean_ql)
-
-    if len(ql_ind) > 0 and include_dcbl:
-        zb = z_half[np.min(ql_ind)]
-        zt = z_half[np.max(ql_ind)]
-        h = zb + (zt-zb) * 0.25
-        # print('zb, zt, h', zb, zt, h)
-        for k in range(nz):
-            if z_half[k]<h:
-                ql_2d[:,k] = np.add(ql_2d[:,k], 1.0)
-
-
-    updraft_masked_ql = np.ma.masked_less_equal(ql_2d, threshold)
-    ql_mask = updraft_masked_ql.mask
-    del ql_2d
-    return ql_mask
-
-
-def conditional_moments(var, center_flag, the_mask):
+def reshape_var(var):
+    """
+    Reshape 3D variable into 2D variable
+    """
     dims = np.shape(var)
     nx = dims[0]
     ny = dims[1]
     nz = dims[2]
 
-    var = var.reshape(nx*ny,nz)
-    if center_flag:
-        mean_prof = np.mean(var,axis=0)
-        var = var - mean_prof
-    masked_var = np.ma.array(var,mask=the_mask)
-    # get the mean
-    mask_var_mean = np.ma.mean(masked_var,axis=0)
-    mask_var_var = np.ma.var(masked_var,axis=0)
-    del masked_var
+    var_2d = var.reshape(nx * ny, nz)
+    return var_2d
 
-    return mask_var_mean, mask_var_var, masked_var
+def calculate_cloud_base_top(ql_2d, ql_tr = 1e-8):
+    """
+    Calculate cloud base and cloud top index based on ql data.
+    A level is considered "cloudy" if a mean ql at this level is greater than
+    the threshold value (1e-8 by default).
+    The lowest cloudy index is cloud base and the highest is cloud top.
+    If there is no cloud, cloud base and cloud top indices are set to NaN.
 
+    Input:  2d field of cloud water
+    Output: height indices of cloud base and cloud top
 
-def conditional_moments2(var, center_flag, the_mask):
-    dims = np.shape(var)
-    nx = dims[0]
-    ny = dims[1]
-    nz = dims[2]
+    """
+    ql_2d_mean = np.mean(ql_2d, axis=0)
 
-    var = var.reshape(nx*ny,nz)
+    idx_ql = np.where(ql_2d_mean >= ql_tr)
 
-    if center_flag:
-        mean_prof = np.mean(var,axis=0)
-        var = var - mean_prof
-    var2 = np.multiply(var,var)
+    if idx_ql[0].size != 0:
+        cb_idx = np.min(idx_ql)
+        ct_idx = np.max(idx_ql)
+    else:
+        cb_idx = np.NaN
+        ct_idx = np.NaN
 
-    masked_var = np.ma.array(var, mask=the_mask)
-    masked_var2 = np.ma.array(var2, mask=the_mask)
-    # get the mean
-    mask_var_mean = np.ma.mean(masked_var,axis=0)
-    mask_var2_mean = np.ma.mean(masked_var2,axis=0)
-    del var2
+    print "CB_idx = ", cb_idx
+    print "CT_idx = ", ct_idx
 
-    return mask_var_mean, mask_var2_mean, masked_var
+    return (cb_idx, ct_idx)
 
-def conditional_product(var_a,var_b):
-    product = np.multiply(var_a,var_b)
-    return np.ma.mean(product,axis=0)
+def interpolate_w(w_2d_full):
+    """
+    Interpolate vertical velocity from cell edges to cell centers
+    """
+    w_2d_half = np.zeros_like(w_2d_full)
 
+    w_2d_half[:, 0] = w_2d_full[:, 0] / 2.
 
+    for idx in range(1, np.shape(w_2d_half)[1], 1):
+        w_2d_half[:,idx] = 0.5 * (w_2d_full[:, idx] + w_2d_full[:, idx-1])
 
-def conditional_correlation(var1,var2):
-    dims = np.shape(var1)
-    nz = dims[1]
+    return w_2d_half
 
-    correlation  = np.empty(nz)
+def updraft_env_mask(tracer_2d, w_interp_2d, ql_2d, cb, ct, z_half, ql_tr = 1e-8):
+    """
+    Find updraft and environment masks.
+    The algorithm is described in Couvreux et al 2010 (DOI 10.1007/s10546-009-9456-5)
+
+    Input:  2D tracer field,
+            2D vertical velocity field (interpolated to the same locations as other variables)
+            2D liquid water field
+            indices of cloud base and cloud top
+            1D array with height
+    Output: updraft and environment masks
+
+    """
+    updraft_mask = np.ones_like(tracer_2d) #mask = 1 -> False, mask = 0 True
+    tracer_mask = np.ones_like(tracer_2d)
+    w_mask = np.ones_like(tracer_2d)
+    ql_mask = np.ones_like(tracer_2d)
+    nxy = np.shape(tracer_2d)[0]
+    nz = np.shape(tracer_2d)[1]
+
+    sigma_sum = 0.
+    z_ql = 0.
+    cloud_flag = False
+    if np.isnan(cb) == False and np.isnan(ct) == False:
+        z_ql = z_half[cb] + 0.25 * (z_half[ct] - z_half[cb])
+        cloud_flag = True
+
+    print "z_ql = ", z_ql
+
+    tracer_mean = np.mean(tracer_2d, axis=0)
+    tracer_square_mean = np.mean(tracer_2d * tracer_2d, axis=0)
+    tracer_variance = tracer_square_mean - tracer_mean * tracer_mean
+    assert(tracer_variance.all() >= 0)
+    tracer_std = np.sqrt(tracer_variance)
+
     for k in range(nz):
-        corr_matrix = np.ma.corrcoef(var1[:,k],var2[:,k])
-        correlation[k] = corr_matrix[0,1]
+        sigma_sum += tracer_std[k]
+        sigma_min = sigma_sum/(k+1.0) * 0.05 # threshold from the paper
 
-    #mask the correlation
-    correlation = np.ma.masked_invalid(correlation)
+        for i in range(nxy):
+            if tracer_std[k] >= sigma_min:
+                if tracer_2d[i,k] - tracer_mean[k] >= tracer_std[k]:
+                    updraft_mask[i,k] = 0
+                    tracer_mask[i,k] = 0
+            # TODO - I think the paper condition should also include this
+            #        But it's not done in Pycles
+            #else:
+            #    if tracer_2d[i,k] - tracer_mean[k] >= sigma_min:
+            #        updraft_mask[i,k] = 0
 
-    return correlation
+            if w_interp_2d[i,k] <= 0.:
+                updraft_mask[i,k] = 1
+
+            if cloud_flag:
+                if z_half[k] >= z_ql and z_half[k] <= z_half[ct]:
+                    if ql_2d[i,k] < ql_tr:
+                        updraft_mask[i,k] = 1
+
+    env_mask = 1 - updraft_mask
+    return updraft_mask, env_mask
 
 
