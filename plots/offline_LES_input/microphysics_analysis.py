@@ -20,8 +20,8 @@ import scampy_wrapper as wrp
 from parameters import *
 from masking import *
 
-sim_name = 'DYCOMS_RF01'
-#sim_name = 'Bomex'
+#sim_name = 'DYCOMS_RF01'
+sim_name = 'Bomex'
 
 show_fractions = True
 n_bins = 100
@@ -116,7 +116,7 @@ cb, ct      = calculate_cloud_base_top(ql_2d)
 # interpolate vertical velocity
 w_interp_2d = interpolate_w(w_2d)
 #calculate masks
-updraft_mask, env_mask = updraft_env_mask(tracer_2d, w_interp_2d, ql_2d, cb, ct, z_half)
+mask_dict = updraft_env_mask(tracer_2d, w_interp_2d, ql_2d, cb, ct, z_half)
 #cleanup
 del ql_2d
 del w_2d
@@ -126,12 +126,18 @@ del th
 
 print "cloud base = ", z_half[cb], " [m]"
 print "cloud top  = ", z_half[ct], " [m]"
-env_frac_prof = updraft_mask.sum(axis=0) / updraft_mask.shape[0]
-upd_frac_prof = env_mask.sum(axis=0) / env_mask.shape[0]
+upd_frac_prof    = 1 - mask_dict["updraft"].sum(axis=0) / mask_dict["updraft"].shape[0]
+env_frac_prof    = 1 - mask_dict["env"].sum(axis=0) / mask_dict["env"].shape[0]
+tracer_frac_prof = 1 - mask_dict["tracer"].sum(axis=0) / mask_dict["tracer"].shape[0]
+w_frac_prof      = 1 - mask_dict["w"].sum(axis=0) / mask_dict["w"].shape[0]
+ql_frac_prof     = 1 - mask_dict["ql"].sum(axis=0) / mask_dict["ql"].shape[0]
 
 plt.figure()
-plt.plot(upd_frac_prof, z_half, '-', c="blue", label='updraft')
+plt.plot(upd_frac_prof, z_half, '-', c="black", label='updraft')
 plt.plot(env_frac_prof, z_half, '-', c="red",  label='environment')
+plt.plot(tracer_frac_prof, z_half, '-', c="green", label='tracer')
+plt.plot(w_frac_prof, z_half, '-', c="orange",  label='w')
+plt.plot(ql_frac_prof, z_half, '-', c="blue", label='ql')
 plt.axhline(y=z_half[cb], color='lightblue', linestyle='-', label = 'ql layer')
 plt.axhline(y=z_half[ct], color='lightblue', linestyle='-')
 plt.legend(loc='upper right')
@@ -144,10 +150,10 @@ plt.savefig(sim_name + "_fractions.pdf")
 keys_list = ["th_env", "th_upd", "qt_env", "qt_upd"]
 # create dictionary for storing the updraft and environment masks for theta and qt
 var_dict = {}
-var_dict["th_env"] = np.ma.array(th_2d, mask=env_mask)
-var_dict["th_upd"] = np.ma.array(th_2d, mask=updraft_mask)
-var_dict["qt_env"] = np.ma.array(qt_2d, mask=env_mask)
-var_dict["qt_upd"] = np.ma.array(qt_2d, mask=updraft_mask)
+var_dict["th_env"] = np.ma.array(th_2d, mask=mask_dict["env"])
+var_dict["th_upd"] = np.ma.array(th_2d, mask=mask_dict["updraft"])
+var_dict["qt_env"] = np.ma.array(qt_2d, mask=mask_dict["env"])
+var_dict["qt_upd"] = np.ma.array(qt_2d, mask=mask_dict["updraft"])
 
 # create dictionaries for storing updraft and environment percentiles and mean profiles
 mean_dict = {}

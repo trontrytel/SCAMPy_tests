@@ -108,13 +108,23 @@ def updraft_env_mask(tracer_2d, w_interp_2d, ql_2d, cb, ct, z_half, ql_tr = 1e-8
 
             if w_interp_2d[i,k] <= 0.:
                 updraft_mask[i,k] = 1
+            else:
+                w_mask[i,k] = 0
 
             if cloud_flag:
                 if z_half[k] >= z_ql and z_half[k] <= z_half[ct]:
                     if ql_2d[i,k] < ql_tr:
                         updraft_mask[i,k] = 1
+                    else:
+                        ql_mask[i,k] = 0
 
     env_mask = 1 - updraft_mask
-    return updraft_mask, env_mask
 
+    mask_dict = {}
+    mask_dict["updraft"] = updraft_mask
+    mask_dict["env"] = env_mask
+    mask_dict["tracer"] = tracer_mask
+    mask_dict["w"] = w_mask
+    mask_dict["ql"] = ql_mask
 
+    return mask_dict
