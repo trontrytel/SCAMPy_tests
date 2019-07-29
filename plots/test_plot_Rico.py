@@ -31,23 +31,6 @@ def sim_data(request):
     setup['namelist']['microphysics']['max_supersaturation'] = 0.0001 #0.1 # 1e-4
     #setup['namelist']['microphysics']['rain_area_value']    = 1.
 
-    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var']        = True
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['updraft_number']         = 5
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment']            = "suselj"
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['mixing_length']          = "sbl"
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']["use_sommeria_deardorff"] = False
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro']        = True
-
-    # change the paramlist parameters
-    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['surface_area']       = 0.1  # 0.2  # 0.1
-    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['max_area_factor']    = 10.  # 1.0  # 9.9
-
-    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['tke_diss_coeff']     = 1.0  # 0.22 # 2.
-    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['tke_ed_coeff']       = 0.1  # 0.17 # 0.1
-
-    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']["detrainment_factor"] = 0.75  # 1.
-    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']["entrainment_factor"] = 0.75  # 1.
-
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
 

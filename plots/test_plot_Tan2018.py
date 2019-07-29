@@ -21,8 +21,6 @@ def sim_data(request):
 
     # generate namelists and paramlists
     setup = pls.simulation_setup('life_cycle_Tan2018')
-    # change the defaults
-    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = True
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
